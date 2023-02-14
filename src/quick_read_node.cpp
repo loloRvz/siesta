@@ -1,8 +1,8 @@
 #include <ros/ros.h>
 
 #include "std_msgs/String.h"
-#include "dynamixel_sdk_examples/GetPosition.h"
-#include "dynamixel_sdk_examples/SetPosition.h"
+#include "std_msgs/Int32.h"
+
 #include "dynamixel_sdk/dynamixel_sdk.h"
 
 using namespace dynamixel;
@@ -23,29 +23,15 @@ using namespace dynamixel;
 #define BAUDRATE                4000000
 #define DEVICE_NAME             "/dev/ttyUSB0"
 
+
 PortHandler * portHandler = PortHandler::getPortHandler(DEVICE_NAME);
 PacketHandler * packetHandler = PacketHandler::getPacketHandler(PROTOCOL_VERSION);
 
 GroupSyncRead groupSyncRead(portHandler, packetHandler, ADDR_GOAL_POSITION, 20);
+GroupSyncWrite groupSyncWrite(portHandler, packetHandler, ADDR_GOAL_POSITION, 4);
 
-void setPositionCallback(const dynamixel_sdk_examples::SetPosition::ConstPtr & msg)
-{
-  ROS_INFO("here!");
 
-  uint8_t dxl_error = 0;
-  int dxl_comm_result = COMM_TX_FAIL;
-  uint32_t position = (unsigned int)msg->position; 
-
-  dxl_comm_result = packetHandler->write4ByteTxRx(
-    portHandler, (uint8_t)msg->id, ADDR_GOAL_POSITION, position, &dxl_error);
-  if (dxl_comm_result == COMM_SUCCESS) {
-    ROS_INFO("setPosition : [ID:%d] [POSITION:%d]", msg->id, msg->position);
-  } else {
-    ROS_ERROR("Failed to set position! Result: %d", dxl_comm_result);
-  }
-}
-
-void setup_motor(){
+void setupMotor() {
   uint8_t dxl_error = 0;
   int dxl_comm_result = COMM_TX_FAIL;
 
@@ -64,21 +50,35 @@ void setup_motor(){
   }
 }
 
-int main(int argc, char ** argv)
-{
-  setup_motor();
+void setPositionCallback(std_msgs::Int32 msg) {
+  uint32_t position = msg.data;
 
-  ros::init(argc, argv, "read_write_node");
+  uint8_t param_goal_position[4] = {DXL_LOBYTE(DXL_LOWORD(position)),
+                                    DXL_HIBYTE(DXL_LOWORD(position)),
+                                    DXL_LOBYTE(DXL_HIWORD(position)),
+                                    DXL_HIBYTE(DXL_HIWORD(position))};
+
+  bool dxl_addparam_result = groupSyncWrite.addParam(DXL1_ID, param_goal_position);
+  int dxl_comm_result = groupSyncWrite.txPacket();
+  if (dxl_comm_result == COMM_SUCCESS) {
+    ROS_INFO("Wrote set_position: %d", position);
+  } else {
+    ROS_ERROR("Failed to set position! Error code: %d", dxl_comm_result);
+  }
+  groupSyncWrite.clearParam();
+}
+
+int main(int argc, char ** argv) {
+  setupMotor();
+
+  ros::init(argc, argv, "quick_read_node");
   ros::NodeHandle nh;
   ros::Subscriber set_position_sub = nh.subscribe("/set_position", 1000, setPositionCallback);
   ros::Rate rate(400);
 
-
-  uint8_t dxl_error = 0;
+  bool dxl_addparam_result = groupSyncRead.addParam(DXL1_ID);
   int dxl_comm_result = COMM_TX_FAIL;
-  int dxl_addparam_result = false;
-  dxl_addparam_result = groupSyncRead.addParam((uint8_t)DXL1_ID);
-  
+
   int32_t realtime_tick = 0;
   int32_t goal_position = 0;
   int32_t curr_position = 0;
@@ -86,13 +86,6 @@ int main(int argc, char ** argv)
   int32_t curr_current  = 0;
 
   while(ros::ok()){
-
-    /*packetHandler->read4ByteTxRx(portHandler, (uint8_t)DXL1_ID, ADDR_REALTIME_TICK,    (uint32_t *)&realtime_tick, &dxl_error);
-    packetHandler->read4ByteTxRx(portHandler, (uint8_t)DXL1_ID, ADDR_GOAL_POSITION,    (uint32_t *)&goal_position, &dxl_error);
-    packetHandler->read4ByteTxRx(portHandler, (uint8_t)DXL1_ID, ADDR_PRESENT_POSITION, (uint32_t *)&curr_position, &dxl_error);
-    packetHandler->read4ByteTxRx(portHandler, (uint8_t)DXL1_ID, ADDR_PRESENT_VELOCITY, (uint32_t *)&curr_velocity, &dxl_error);
-    packetHandler->read4ByteTxRx(portHandler, (uint8_t)DXL1_ID, ADDR_PRESENT_CURRENT,  (uint32_t *)&curr_current, &dxl_error);*/
-
     dxl_comm_result = groupSyncRead.txRxPacket();
     if (dxl_comm_result == COMM_SUCCESS) {
       realtime_tick = groupSyncRead.getData((uint8_t)DXL1_ID, ADDR_REALTIME_TICK, 2);
@@ -111,7 +104,7 @@ int main(int argc, char ** argv)
       ROS_ERROR("Connection failure! Error code: %d", dxl_comm_result);
     }
 
-
+    ros::spinOnce();
     rate.sleep();
   }
 
