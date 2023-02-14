@@ -100,16 +100,17 @@ int main(int argc, char ** argv)
       curr_position = groupSyncRead.getData((uint8_t)DXL1_ID, ADDR_PRESENT_POSITION, 4);
       curr_velocity = groupSyncRead.getData((uint8_t)DXL1_ID, ADDR_PRESENT_VELOCITY, 4);
       curr_current = groupSyncRead.getData((uint8_t)DXL1_ID, ADDR_PRESENT_CURRENT, 2);
+
+      ROS_INFO("Realtime tick %d", realtime_tick);
+      ROS_INFO("Goal position %d", goal_position);
+      ROS_INFO("Curr position %d", curr_position);
+      ROS_INFO("Curr velocity %d", curr_velocity);
+      ROS_INFO("Curr current %d", curr_current);
+      ROS_INFO("********************");
     } else {
-      ROS_ERROR("Failed to get position! Result: %d", dxl_comm_result);
+      ROS_ERROR("Connection failure! Error code: %d", dxl_comm_result);
     }
 
-    ROS_INFO("Realtime tick %d", realtime_tick);
-    ROS_INFO("Goal position %d", goal_position);
-    ROS_INFO("Curr position %d", curr_position);
-    ROS_INFO("Curr velocity %d", curr_velocity);
-    ROS_INFO("Curr current %d", curr_current);
-    ROS_INFO("********************");
 
     rate.sleep();
   }
