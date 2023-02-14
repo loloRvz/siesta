@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+
+<launch>
+    <node pkg="siesta" type="siesta_node" name="quick_read_node" output="screen"/>
+    <!--node pkg="siesta" type="quick_read_node.py" name="quick_read_node" output="screen"/-->
+</launch>
