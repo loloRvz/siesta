@@ -14,3 +14,6 @@
 #define BAUDRATE                4000000
 #define DEVICE_NAME             "/dev/ttyUSB0"
 
+// Encoder data
+#define POS_MIN                 0
+#define POS_MAX                 4095
