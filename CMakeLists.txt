@@ -137,17 +137,17 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 
-add_executable(omav_dxl_poc_node src/omav_dxl_poc.cpp)
-add_dependencies(omav_dxl_poc_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(omav_dxl_poc_node ${catkin_LIBRARIES})
+add_executable(dxl_quick_read_node src/dxl_quick_read_node.cpp)
+add_dependencies(dxl_quick_read_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(dxl_quick_read_node ${catkin_LIBRARIES})
+
+add_executable(set_point_publisher_node src/set_point_publisher_node.cpp)
+add_dependencies(set_point_publisher_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(set_point_publisher_node ${catkin_LIBRARIES})
 
 #add_executable(quick_read_node src/quick_read_node.cpp)
 #add_dependencies(quick_read_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #target_link_libraries(quick_read_node ${catkin_LIBRARIES})
-
-#add_executable(set_point_publisher_node src/set_point_publisher_node.cpp)
-#add_dependencies(set_point_publisher_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-#target_link_libraries(set_point_publisher_node ${catkin_LIBRARIES})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
