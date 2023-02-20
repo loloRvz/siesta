@@ -9,6 +9,8 @@
 #include "omav_hovery_interface/ll/dynamixel_motor_adapter.h"
 #include "omav_hovery_interface/ll/polling_thread.h"
 
+#define POLLING_FREQ 400
+
 class PositionSetter{
   public:
     void setPositionCallback(std_msgs::Float32 msg) {
@@ -30,7 +32,7 @@ int main(int argc, char ** argv) {
   ros::init(argc, argv, "dxl_quick_read_node");
   ros::NodeHandle nh;
   ros::Subscriber set_position_sub = nh.subscribe("/set_position", 1000, &PositionSetter::setPositionCallback, &ps);
-  ros::Rate rate(400);
+  ros::Rate rate(POLLING_FREQ);
 
   // Declare motors & interfaces
   std::array<int, 1> dynamixels = {1};
@@ -52,7 +54,7 @@ int main(int argc, char ** argv) {
 
   std::ofstream myfile;
   myfile.open(filename_string);
-  myfile << "setpoint [rad], position [rad], velocity [rad/s], acceleration [rad/s^2], current [mA], delta_t [ms]\n";
+  myfile << "setpoint[rad],position[rad],velocity[rad/s],acceleration[rad/s^2],current[mA],delta_t [ms]\n";
 
   // Wait for keystroke to start
   std::getchar();
@@ -70,7 +72,7 @@ int main(int argc, char ** argv) {
     ta_adapter.write(setPointAngle);
     readBackStatus = ta_adapter.read();
 
-    sprintf(data_string, "%03.2f, %03.2f, %03.2f, %03.2f, %03.2f, %03.2f\n",
+    sprintf(data_string, "%03.2f,%03.2f,%03.2f,%03.2f,%03.2f,%03.2f\n",
             readBackStatus[0].setpoint, 
             readBackStatus[0].position, 
             readBackStatus[0].velocity,

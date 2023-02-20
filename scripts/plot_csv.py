@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 from enum import Enum
 from IPython.display import display
@@ -16,23 +17,29 @@ SETPOINT, POSITION, VELOCITY, ACCELERATION, CURRENT, PERIOD = range(6)
 def compute_acceleration(df):
     # Transform to numpy array for computations
     data = df.to_numpy()
+    
     # Compute acceleration from velocity difference and divide by period
-    data[:,ACCELERATION] = np.append(np.nan, np.diff(data[:,VELOCITY])) / data[:,PERIOD] * 1000
+    data[:,ACCELERATION] = np.append(np.nan, np.diff(data[:,VELOCITY])/ data[1:,PERIOD]*1000 ) 
+
     # Transform back to dataframe
-    df = pd.DataFrame(data, columns = df.columns.values)
+    return pd.DataFrame(data, columns = df.columns.values)
 
 def plot_df(df):
     data = df.to_numpy()
+
+    # Make data a bit more readable - ignore units for now
+    data[:,SETPOINT] -= math.pi
+    data[:,POSITION] -= math.pi
     data[:,CURRENT] /= 1000
     data[:,ACCELERATION] /= 100
+    data[:,VELOCITY] /= 5
+
+    #Compute velocity from position values
+    #vel_computed = np.append(np.nan, np.diff(data[:,POSITION])/ data[1:,PERIOD]*1000 ) / 10
+
     fig,ax=plt.subplots()
-    ax2=ax.twinx()
-
-    #Compute velocity
-    vel_computed = np.append(np.nan, np.diff(data[:,POSITION])) / data[:,PERIOD] * 1000
-
     ax.plot(data[:,SETPOINT:CURRENT+1])
-    ax.plot(vel_computed)
+    #ax.plot(vel_computed)
     ax.set_xlabel("time")
     ax.set_ylabel("tick")
     ax.legend(df.columns.values)
@@ -49,8 +56,12 @@ def add_acceleration_column(df):
 
 ### SCRIPT ###
 
-path = '../data/2023-02-15--18-44-29_dataset.csv'
+#path = '../data/2023-02-16--10-16-30_dataset.csv'
+path = '../data/2023-02-20--11-31-40_dataset.csv'
+
 df = pd.read_csv(path)
-compute_acceleration(df)
-display(df)
+df = compute_acceleration(df)
 plot_df(df)
+
+
+display(df.head(40))
