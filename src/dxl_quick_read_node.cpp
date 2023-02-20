@@ -52,7 +52,7 @@ int main(int argc, char ** argv) {
 
   std::ofstream myfile;
   myfile.open(filename_string);
-  myfile << "setpoint [rad], position [rad], velocity [rad/s], current [mA], delta_t [ms]\n";
+  myfile << "setpoint [rad], position [rad], velocity [rad/s], acceleration [rad/s^2], current [mA], delta_t [ms]\n";
 
   // Wait for keystroke to start
   std::getchar();
@@ -70,18 +70,20 @@ int main(int argc, char ** argv) {
     ta_adapter.write(setPointAngle);
     readBackStatus = ta_adapter.read();
 
-    sprintf(data_string, "%03.2f, %03.2f, %03.2f, %03.2f, %03.2f\n",
+    sprintf(data_string, "%03.2f, %03.2f, %03.2f, %03.2f, %03.2f, %03.2f\n",
             readBackStatus[0].setpoint, 
             readBackStatus[0].position, 
             readBackStatus[0].velocity,
+            NAN,
             readBackStatus[0].current,  
             duration_cast<microseconds>(t_now - t_prev).count()/1000.0);
     myfile << data_string;
 
-    printf("setpt [rad]: %03.2f \t pos [rad]: %03.2f \t vel [rad/s]: %03.2f \t amp [mA]: %03.2f \t delta_t [ms]= %03.2f\n",
+    printf("setpt [rad]: %03.2f \t pos [rad]: %03.2f \t vel [rad/s]: %03.2f \t acc [rad/s^2]: %03.2f \t amp [mA]: %03.2f \t delta_t [ms]= %03.2f\n",
            readBackStatus[0].setpoint, 
            readBackStatus[0].position, 
            readBackStatus[0].velocity,
+           NAN,
            readBackStatus[0].current,  
            duration_cast<microseconds>(t_now - t_prev).count()/1000.0);
 
