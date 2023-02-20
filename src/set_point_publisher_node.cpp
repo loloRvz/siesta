@@ -50,14 +50,14 @@ int main(int argc, char ** argv) {
 
   ROS_INFO("Publishing input...");
   while(ros::ok()){
+    // Generate input depending on input type
     switch(INPUT_TYPE){
+
       case RAND:
         if(count > INPUT_FREQ/RAND_SWITCH_FREQ){
           msg.data = rand_signal(distribution(generator)); // Generate random variable with normal distribution
           count = 0;
-        }else{
-          count++;
-        }
+        }else{count++;}
         break;
 
       case CHRP:
@@ -68,6 +68,7 @@ int main(int argc, char ** argv) {
         msg.data = -1;
     }
   
+    // Publish set point
     set_point_pub.publish(msg);
 
     ros::spinOnce();

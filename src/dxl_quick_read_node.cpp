@@ -11,9 +11,10 @@
 
 #define POLLING_FREQ 400
 
+// Setpoint topic callback
 class PositionSetter{
   public:
-    void setPositionCallback(std_msgs::Float32 msg) {
+    void setPointCallback(std_msgs::Float32 msg) {
       set_point = msg.data;
     }
     double getSetPoint() {
@@ -28,10 +29,10 @@ class PositionSetter{
 int main(int argc, char ** argv) {
   PositionSetter ps;
 
-  // Init ros
+  // Init rosnode and subscribe to setpoint topic
   ros::init(argc, argv, "dxl_quick_read_node");
   ros::NodeHandle nh;
-  ros::Subscriber set_position_sub = nh.subscribe("/set_position", 1000, &PositionSetter::setPositionCallback, &ps);
+  ros::Subscriber set_position_sub = nh.subscribe("/set_position", 1000, &PositionSetter::setPointCallback, &ps);
   ros::Rate rate(POLLING_FREQ);
 
   // Declare motors & interfaces
@@ -40,7 +41,7 @@ int main(int argc, char ** argv) {
   omV::ll::MotorInterface<_POS>::MotorStatusArray readBackStatus;
   omV::ll::DynamixelMotorAdapter<_POS> ta_adapter("/dev/ttyUSB0", 3000000, dynamixels);
 
-  // Init motors
+  // Init motor
   ta_adapter.open();
   ta_adapter.enable();
 
@@ -50,48 +51,42 @@ int main(int argc, char ** argv) {
 	char filename_string[100], data_string[100];
   time(&curr_time);
 	curr_tm = localtime(&curr_time);
-  strftime(filename_string, 100, "/home/lolo/siesta_ws/src/siesta/data/%Y-%m-%d--%H-%M-%S_dataset.csv", curr_tm);
-
+  strftime(filename_string, 100, "/home/lolo/siesta_ws/src/siesta/data/%Y-%m-%d--%H-%M-%S_dataset.csv", curr_tm); // Create filename with date&time
   std::ofstream myfile;
   myfile.open(filename_string);
-  myfile << "setpoint[rad],position[rad],velocity[rad/s],acceleration[rad/s^2],current[mA],delta_t [ms]\n";
+  myfile << "setpoint[rad],position[rad],velocity[rad/s],current[mA],delta_t[ms],acceleration[rad/s^2]\n"; // Set column descriptions
 
-  // Wait for keystroke to start
-  std::getchar();
-
-  // Loop frequency measurements
+  // Time variables
   time_point t_now = std::chrono::system_clock::now();
   time_point t_prev = t_now;
 
 
+  ROS_INFO("Polling motor...");
   while (ros::ok()) {
+    // Measure exact loop frequency
     t_prev = t_now;
     t_now = std::chrono::system_clock::now();
 
+    // Read motor data & write setpoint
     setPointAngle[0] = ps.getSetPoint();
     ta_adapter.write(setPointAngle);
     readBackStatus = ta_adapter.read();
 
+    // Write data to csv file
     sprintf(data_string, "%03.2f,%03.2f,%03.2f,%03.2f,%03.2f,%03.2f\n",
             readBackStatus[0].setpoint, 
             readBackStatus[0].position, 
             readBackStatus[0].velocity,
-            NAN,
             readBackStatus[0].current,  
-            duration_cast<microseconds>(t_now - t_prev).count()/1000.0);
+            duration_cast<microseconds>(t_now - t_prev).count()/1000.0,
+            NAN);
     myfile << data_string;
 
-    printf("setpt [rad]: %03.2f \t pos [rad]: %03.2f \t vel [rad/s]: %03.2f \t acc [rad/s^2]: %03.2f \t amp [mA]: %03.2f \t delta_t [ms]= %03.2f\n",
-           readBackStatus[0].setpoint, 
-           readBackStatus[0].position, 
-           readBackStatus[0].velocity,
-           NAN,
-           readBackStatus[0].current,  
-           duration_cast<microseconds>(t_now - t_prev).count()/1000.0);
-
+    // Loop
     ros::spinOnce();
     rate.sleep();
   }
+  ROS_INFO("Stopped polling motor. Exiting...");
 
   myfile.close();
   return 0;

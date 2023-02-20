@@ -10,7 +10,7 @@ from IPython.display import display
 
 from mlp import CSVDataset
 
-SETPOINT, POSITION, VELOCITY, ACCELERATION, CURRENT, PERIOD = range(6)
+SETPOINT, POSITION, VELOCITY, CURRENT, PERIOD, ACCELERATION = range(6)
 
 ### FUNCTIONS ###
 
@@ -64,5 +64,4 @@ df = pd.read_csv(path)
 df = compute_acceleration(df)
 plot_df(df)
 
-
-display(df.head(40))
+#display(df.head(40))
