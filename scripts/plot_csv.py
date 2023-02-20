@@ -39,11 +39,12 @@ def plot_df(df):
 
     fig,ax=plt.subplots()
     ax.plot(data[:,SETPOINT:CURRENT+1])
+    ax.plot(data[:,ACCELERATION])
     #ax.plot(vel_computed)
     ax.axhline(y=0, color='k')
     ax.set_xlabel("time")
     ax.set_ylabel("tick")
-    ax.legend(df.columns.values)
+    ax.legend(["setpoint","postition","velocity","current","acceleration"])
     plt.show()
 
 def add_acceleration_column(df):
@@ -57,8 +58,7 @@ def add_acceleration_column(df):
 
 ### SCRIPT ###
 
-#path = '../data/2023-02-16--10-16-30_dataset.csv'
-path = '../data/2023-02-20--14-58-08_dataset.csv'
+path = '../data/2023-02-20--16-13-06_dataset.csv'
 
 df = pd.read_csv(path)
 df = compute_acceleration(df)

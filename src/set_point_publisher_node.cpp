@@ -9,11 +9,11 @@
 
 #define INPUT_FREQ 200
 enum INPUT_TYPES {RAND,CHRP};
-#define INPUT_TYPE RAND // 0: normal distr. ; 1: chirp signal 
+#define INPUT_TYPE CHRP // 0: normal distr. ; 1: chirp signal 
 #define INPUT_MEAN M_PI
 
-#define RAND_SWITCH_FREQ 10
-#define RAND_VARIANCE 0.5
+#define RAND_SWITCH_FREQ 5
+#define RAND_VARIANCE 0.3
 
 #define CHRP_AMPLITUDE 0.5
 #define CHRP_FREQ1 2
