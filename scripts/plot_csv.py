@@ -17,7 +17,7 @@ SETPOINT, POSITION, VELOCITY, ACCELERATION, CURRENT, PERIOD = range(6)
 def compute_acceleration(df):
     # Transform to numpy array for computations
     data = df.to_numpy()
-    
+
     # Compute acceleration from velocity difference and divide by period
     data[:,ACCELERATION] = np.append(np.nan, np.diff(data[:,VELOCITY])/ data[1:,PERIOD]*1000 ) 
 
@@ -40,6 +40,7 @@ def plot_df(df):
     fig,ax=plt.subplots()
     ax.plot(data[:,SETPOINT:CURRENT+1])
     #ax.plot(vel_computed)
+    ax.axhline(y=0, color='k')
     ax.set_xlabel("time")
     ax.set_ylabel("tick")
     ax.legend(df.columns.values)
@@ -57,7 +58,7 @@ def add_acceleration_column(df):
 ### SCRIPT ###
 
 #path = '../data/2023-02-16--10-16-30_dataset.csv'
-path = '../data/2023-02-20--11-31-40_dataset.csv'
+path = '../data/2023-02-20--14-58-08_dataset.csv'
 
 df = pd.read_csv(path)
 df = compute_acceleration(df)
