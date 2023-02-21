@@ -4,11 +4,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import os, glob
 
-from enum import Enum
 from IPython.display import display
 
 from mlp import CSVDataset
+
 
 SETPOINT, POSITION, VELOCITY, CURRENT, PERIOD, ACCELERATION = range(6)
 
@@ -42,9 +43,10 @@ def plot_df(df):
     ax.plot(data[:,ACCELERATION])
     #ax.plot(vel_computed)
     ax.axhline(y=0, color='k')
-    ax.set_xlabel("time")
-    ax.set_ylabel("tick")
+    ax.set_xlabel("t_i (400Hz)")
+    ax.set_ylabel("Measure")
     ax.legend(["setpoint","postition","velocity","current","acceleration"])
+    plt.title("Motor data reading (400Hz)")
     plt.show()
 
 def add_acceleration_column(df):
@@ -57,8 +59,12 @@ def add_acceleration_column(df):
 
 
 ### SCRIPT ###
-path = '../data/2023-02-21--09-19-04_dataset.csv'
+list_of_files = glob.glob('../data/*.csv')
+path = max(list_of_files, key=os.path.getctime)
 
+path = '../data/2023-02-21--13-21-23_dataset.csv'
+
+print("Reading data from " + path)
 df = pd.read_csv(path)
 df = compute_acceleration(df)
 plot_df(df)
