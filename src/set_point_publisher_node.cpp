@@ -9,27 +9,13 @@
 
 using namespace input_signal_params;
 
-/*#define INPUT_FREQ 200
-enum INPUT_TYPES {RAND,CHRP};
-#define INPUT_TYPE CHRP // 0: normal distr. ; 1: chirp signal 
-#define INPUT_MEAN M_PI
-
-#define RAND_SWITCH_FREQ 5
-#define RAND_VARIANCE 0.3
-
-#define CHRP_AMPLITUDE 0.5
-#define CHRP_FREQ1 10
-#define CHRP_FREQ2 40
-#define CHRP_AMPLITUDE 0.5
-#define CHRP_PERIOD 3 */
-
 void load_params(ros::NodeHandle nh){
   nh.getParam("/input/frequency",           INPUT_FREQ);
   nh.getParam("/input/type",                INPUT_TYPE);
   nh.getParam("/input/centre_point",        INPUT_CENTRE_POINT);
 
   nh.getParam("/input/gaussian/frequency",  GAUS_FREQ);
-  nh.getParam("/input/gaussian/frequency",  GAUS_VARIANCE);
+  nh.getParam("/input/gaussian/variance",  GAUS_VARIANCE);
 
   nh.getParam("/input/chirp/amplitude",     CHRP_AMPLITUDE);
   nh.getParam("/input/chirp/frequency1",    CHRP_FREQ1);
