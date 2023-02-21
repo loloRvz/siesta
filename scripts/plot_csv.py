@@ -57,8 +57,7 @@ def add_acceleration_column(df):
 
 
 ### SCRIPT ###
-
-path = '../data/2023-02-20--16-13-06_dataset.csv'
+path = '../data/2023-02-21--09-19-04_dataset.csv'
 
 df = pd.read_csv(path)
 df = compute_acceleration(df)

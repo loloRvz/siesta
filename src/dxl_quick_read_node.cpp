@@ -9,6 +9,8 @@
 #include "omav_hovery_interface/ll/dynamixel_motor_adapter.h"
 #include "omav_hovery_interface/ll/polling_thread.h"
 
+#include "motor_specs.h"
+
 #define POLLING_FREQ 400
 
 // Setpoint topic callback
@@ -36,10 +38,10 @@ int main(int argc, char ** argv) {
   ros::Rate rate(POLLING_FREQ);
 
   // Declare motors & interfaces
-  std::array<int, 1> dynamixels = {1};
+  std::array<int, 1> dynamixels = {DXL1_ID};
   std::array<double, 1> setPointAngle{M_PI};
   omV::ll::MotorInterface<_POS>::MotorStatusArray readBackStatus;
-  omV::ll::DynamixelMotorAdapter<_POS> ta_adapter("/dev/ttyUSB0", 3000000, dynamixels);
+  omV::ll::DynamixelMotorAdapter<_POS> ta_adapter(DEVICE_NAME, BAUDRATE, dynamixels);
 
   // Init motor
   ta_adapter.open();

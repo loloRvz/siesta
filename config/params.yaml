@@ -1,0 +1,17 @@
+input:
+  frequency: 200
+
+  type: 0             # 0: 'gaussian' | 1: 'chirp'
+  centre_point: 3.1415926536
+
+  # Params for random input
+  gaussian:
+    frequency: 5
+    variance: 0.3
+
+  # Params for chirp input
+  chirp:
+    amplitude: 0.5
+    frequency1: 10
+    frequency2: 40
+    period: 3

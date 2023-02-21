@@ -11,7 +11,7 @@
 
 // Default setting
 #define DXL1_ID                 1
-#define BAUDRATE                4000000
+#define BAUDRATE                3000000
 #define DEVICE_NAME             "/dev/ttyUSB0"
 
 // Encoder data
