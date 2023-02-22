@@ -9,6 +9,7 @@
 
 using namespace input_signal_params;
 
+/*** Load input signal parameters ***/
 void load_params(ros::NodeHandle nh){
   nh.getParam("/input/frequency",           INPUT_FREQ);
   nh.getParam("/input/type",                INPUT_TYPE);

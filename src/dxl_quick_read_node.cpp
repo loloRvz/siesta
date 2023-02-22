@@ -10,6 +10,9 @@
 #include "omav_hovery_interface/ll/polling_thread.h"
 
 #include "motor_specs.h"
+#include "input_signal_params.h"
+
+using namespace input_signal_params;
 
 #define POLLING_FREQ 400
 
@@ -24,7 +27,7 @@ class PositionSetter{
     }
 
   private:
-    double set_point;
+    double set_point = INPUT_CENTRE_POINT;
 };
 
 
@@ -34,7 +37,7 @@ int main(int argc, char ** argv) {
   // Init rosnode and subscribe to setpoint topic
   ros::init(argc, argv, "dxl_quick_read_node");
   ros::NodeHandle nh;
-  ros::Subscriber set_position_sub = nh.subscribe("/set_position", 1000, &PositionSetter::setPointCallback, &ps);
+  ros::Subscriber set_position_sub = nh.subscribe(setpoint_topic_, 1000, &PositionSetter::setPointCallback, &ps);
   ros::Rate rate(POLLING_FREQ);
 
   // Declare motors & interfaces
@@ -56,17 +59,16 @@ int main(int argc, char ** argv) {
   strftime(filename_string, 100, "/home/lolo/siesta_ws/src/siesta/data/%Y-%m-%d--%H-%M-%S_dataset.csv", curr_tm); // Create filename with date&time
   std::ofstream myfile;
   myfile.open(filename_string);
-  myfile << "setpoint[rad],position[rad],velocity[rad/s],current[mA],delta_t[ms],acceleration[rad/s^2]\n"; // Set column descriptions
+  myfile << "time[ms],setpoint[rad],position[rad],velocity[rad/s],current[mA],velocity_computed[rad/s],acceleration_computed[rad/s^2]\n"; // Set column descriptions
 
   // Time variables
   time_point t_now = std::chrono::system_clock::now();
-  time_point t_prev = t_now;
+  time_point t_start = std::chrono::system_clock::now();
 
-
+  ros::topic::waitForMessage<std_msgs::Float32>(setpoint_topic_,ros::Duration(5));
   ROS_INFO("Polling motor...");
   while (ros::ok()) {
-    // Measure exact loop frequency
-    t_prev = t_now;
+    // Measure exact loop time
     t_now = std::chrono::system_clock::now();
 
     // Read motor data & write setpoint
@@ -75,12 +77,13 @@ int main(int argc, char ** argv) {
     readBackStatus = ta_adapter.read();
 
     // Write data to csv file
-    sprintf(data_string, "%03.2f,%03.2f,%03.2f,%03.2f,%03.2f,%03.2f\n",
+    sprintf(data_string, "%05.2f,%03.2f,%03.2f,%03.2f,%03.2f,%03.2f,%03.2f\n",
+            duration_cast<microseconds>(t_now - t_start).count()/1000.0,
             readBackStatus[0].setpoint, 
             readBackStatus[0].position, 
             readBackStatus[0].velocity,
-            readBackStatus[0].current,  
-            duration_cast<microseconds>(t_now - t_prev).count()/1000.0,
+            readBackStatus[0].current,
+            NAN,
             NAN);
     myfile << data_string;
 

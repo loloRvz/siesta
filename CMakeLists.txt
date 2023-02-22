@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(siesta)
 
 add_definitions(-std=c++17 -fPIC -Wall -Wno-reorder -Wno-unknown-pragmas)
+add_compile_definitions(MODE_DEFAULT)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp

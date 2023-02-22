@@ -19,5 +19,7 @@ namespace input_signal_params {
     double CHRP_FREQ2 = 40;
     double CHRP_PERIOD = 3;
 
+    const std::string setpoint_topic_ = "set_position";
+
 }
 #endif

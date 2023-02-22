@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os, glob
+import math
+
+from derivative import dxdt
 
 import torch
 from torch.nn.init import xavier_uniform_
@@ -22,7 +25,9 @@ from sklearn.metrics import mean_squared_error
 
 
 # Data columns
-SETPOINT, POSITION, VELOCITY, CURRENT, PERIOD, ACCELERATION = range(6)
+TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP = range(7)
+
+TIME_UNIT = 0.001   # ms
 
 
 ### CLASSES ###
@@ -32,12 +37,9 @@ class CSVDataset(Dataset):
     # load the dataset
     def __init__(self, path):
         # load the csv file as a dataframe
-        df = pd.read_csv(path, header=None)
+        self.df = pd.read_csv(path, header=None)
         # store the inputs and outputs
-        self.X = df.to_numpy()[1:,SETPOINT:CURRENT]
-        self.y = df.to_numpy()[1:,ACCELERATION]
-        print(self.X)
-        print(self.y)
+        #self.X = df.to_numpy()[1:,SETPOINT:CURRENT]
 
     # number of rows in the dataset
     def __len__(self):
@@ -103,28 +105,58 @@ class MLP(Module):
 
 ### FUNCTIONS ###
 
-def compute_acceleration(df):
-    # Transform to numpy array for computations
+# prepare dataset
+def prepare_data(path):
+    # Load dataset & convert to np
+    df= pd.read_csv(path)
     data = df.to_numpy()
-    # Compute acceleration from velocity difference and divide by period
-    data[:,ACCELERATION] = np.append(np.nan, np.diff(data[:,VELOCITY])/ data[1:,PERIOD]*1000 ) 
-    # Transform back to dataframe
-    return pd.DataFrame(data, columns = df.columns.values)
+    resave = False
 
-# prepare the dataset
-def prepare_data(path, dev):
-    # load the dataset
-    dataset = CSVDataset(path)
-    # calculate split
-    train, test = dataset.get_splits()
-    # prepare data loaders
-    train_dl = DataLoader(train, batch_size=32, shuffle=True,
-                          pin_memory=True)
-    test_dl = DataLoader(test, batch_size=1024, shuffle=False,
-                         pin_memory=True)
-    return train_dl, test_dl
+    # Compute velocity from position 
+    if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1:
+        data[:,VELOCITY_COMP] = dxdt(data[:,POSITION],data[:,TIME]/TIME_UNIT,kind="finite_difference", k=1)
+        resave = True
 
-# train the model
+    # Compute acceleration from velocity or velocity_comp
+    if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1:
+        data[:,ACCELERATION_COMP] = dxdt(data[:,VELOCITY],data[:,TIME]/TIME_UNIT,kind="finite_difference", k=1)
+        #data[:,ACCELERATION_COMP] = dxdt(data[:,VELOCITY_COMP],data[:,TIME],kind="finite_difference", k=1)
+        resave = True
+    
+    # Save dataframe to csv if velocity or acceleration computed
+    if resave:
+        print("Resaving dataframe to csv")
+        df = pd.DataFrame(data, columns = df.columns.values)
+        df.to_csv(path, index=False)
+
+    return df
+
+# plot dataset
+def plot_df(df):
+    data = df.to_numpy()
+    print(data)
+
+    # Make data a bit more readable - ignore units for now
+    data[:,SETPOINT] -= math.pi
+    data[:,POSITION] -= math.pi
+    data[:,CURRENT] /= 1000
+    data[:,ACCELERATION_COMP] /= 100
+    data[:,VELOCITY] /= 5
+
+    #Compute velocity from position values
+    #vel_computed = np.append(np.nan, np.diff(data[:,POSITION])/ data[1:,PERIOD]*1000 ) / 10
+
+    fig,ax=plt.subplots()
+    ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
+    #ax.plot(vel_computed)
+    ax.axhline(y=0, color='k')
+    ax.set_xlabel("Time [ms]")
+    ax.set_ylabel("Measure")
+    ax.legend(df.columns.values[SETPOINT:ACCELERATION_COMP])
+    plt.title("Motor data reading @400Hz")
+    plt.show()
+
+# train model
 def train_model(train_dl, model, dev, dt_string, lr):
     # define the optimization
     criterion = MSELoss()
@@ -162,7 +194,7 @@ def train_model(train_dl, model, dev, dt_string, lr):
     except KeyboardInterrupt:
         print('interrupted!')
 
-# evaluate the model
+# evaluate model
 def evaluate_model(test_dl, model):
     predictions, actuals = list(), list()
     for i, (inputs, targets) in enumerate(test_dl):
@@ -180,7 +212,7 @@ def evaluate_model(test_dl, model):
     mse = mean_squared_error(actuals, predictions)
     return mse
 
-# make a class prediction for one row of data
+# make class prediction for one row of data
 def predict(row, model, dev):
     # convert row to data
     row = Tensor([row]).to(dev)
@@ -193,51 +225,14 @@ def predict(row, model, dev):
 
 ### SCRIPT ###
 def main():
-    if torch.cuda.is_available():
-        dev = "cuda:0"
-        print("Using GPU!")
-    else:
-        dev = "cpu"
-        print("Using CPU D:")
-
-    os.makedirs("../models/", exist_ok=True)
-
     # prepare the data
     list_of_files = glob.glob('../data/*.csv')
     path = max(list_of_files, key=os.path.getctime)
     #path = '../data/2023-02-21--14-05-03_dataset.csv'
-    train_dl, test_dl = prepare_data(path, dev)
-    print(len(train_dl.dataset), len(test_dl.dataset))
-"""     # define the network
-    model = MLP(15, dev, 512)
-    # train the model
-    train_model(train_dl, model, dev, dt_string, lr=0.01)
-    # evaluate the model
-    mse = evaluate_model(test_dl, model)
-    print('MSE: %.3f, RMSE: %.3f' % (mse, sqrt(mse)))
 
-    predictions = []
-    gt = []
-    for i in range(0, len(test_dl.dataset)):
-        row = test_dl.dataset[i][0]
-        predictions.append(predict(row, model, dev))
-        gt.append(test_dl.dataset[i][1])
+    df = prepare_data(path)
+    plot_df(df)
 
-    # Rearrange lists
-    predictions = [list(x) for x in zip(*predictions)]
-    gt = [list(x) for x in zip(*gt)]
-    plt.plot(predictions[0], color='red')
-    plt.plot(gt[0], color='blue')
-    plt.show() """
-
-    # torch.save(
-    #     model, '/home/eugenio/catkin_ws/src/delta_control/scripts/NNIdentification/fixed_delta.pt')
-
-    # make a single prediction (expect class=1)
-    # row = [0.00632, 18.00, 2.310, 0, 0.5380, 6.5750,
-    #        65.20, 4.0900, 1, 296.0, 15.30, 396.90, 4.98]
-    # yhat = predict(row, model,dev)
-    # print('Predicted: %.3f' % yhat)
 
 
 if __name__ == "__main__":
