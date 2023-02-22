@@ -113,14 +113,13 @@ def prepare_data(path):
     resave = False
 
     # Compute velocity from position 
-    if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1:
-        data[:,VELOCITY_COMP] = dxdt(data[:,POSITION],data[:,TIME]/TIME_UNIT,kind="finite_difference", k=1)
+    if True: #np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1:
+        data[:,VELOCITY_COMP] = dxdt(data[:,POSITION],data[:,TIME]*TIME_UNIT,kind="finite_difference", k=1)
         resave = True
 
     # Compute acceleration from velocity or velocity_comp
-    if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1:
-        data[:,ACCELERATION_COMP] = dxdt(data[:,VELOCITY],data[:,TIME]/TIME_UNIT,kind="finite_difference", k=1)
-        #data[:,ACCELERATION_COMP] = dxdt(data[:,VELOCITY_COMP],data[:,TIME],kind="finite_difference", k=1)
+    if True: #np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1:
+        data[:,ACCELERATION_COMP] = dxdt(data[:,VELOCITY],data[:,TIME]*TIME_UNIT,kind="finite_difference", k=1)
         resave = True
     
     # Save dataframe to csv if velocity or acceleration computed
@@ -140,8 +139,9 @@ def plot_df(df):
     data[:,SETPOINT] -= math.pi
     data[:,POSITION] -= math.pi
     data[:,CURRENT] /= 1000
-    data[:,ACCELERATION_COMP] /= 100
     data[:,VELOCITY] /= 5
+    data[:,VELOCITY_COMP] /= 5
+    data[:,ACCELERATION_COMP] /= 100
 
     #Compute velocity from position values
     #vel_computed = np.append(np.nan, np.diff(data[:,POSITION])/ data[1:,PERIOD]*1000 ) / 10
@@ -152,7 +152,7 @@ def plot_df(df):
     ax.axhline(y=0, color='k')
     ax.set_xlabel("Time [ms]")
     ax.set_ylabel("Measure")
-    ax.legend(df.columns.values[SETPOINT:ACCELERATION_COMP])
+    ax.legend(df.columns.values[SETPOINT:ACCELERATION_COMP+1])
     plt.title("Motor data reading @400Hz")
     plt.show()
 
