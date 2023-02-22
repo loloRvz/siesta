@@ -1,5 +1,10 @@
 #! /usr/bin/env python3
 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os, glob
+
 import torch
 from torch.nn.init import xavier_uniform_
 from torch.nn import MSELoss
@@ -12,15 +17,13 @@ from torch.utils.data import random_split
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.metrics import mean_squared_error
-from pandas import read_csv
-from numpy import sqrt
-from numpy import vstack
-from datetime import datetime
-import os
-import matplotlib.pyplot as plt
 
-# pytorch mlp for regression
+from sklearn.metrics import mean_squared_error
+
+
+# Data columns
+SETPOINT, POSITION, VELOCITY, CURRENT, PERIOD, ACCELERATION = range(6)
+
 
 ### CLASSES ###
 
@@ -29,14 +32,12 @@ class CSVDataset(Dataset):
     # load the dataset
     def __init__(self, path):
         # load the csv file as a dataframe
-        df = read_csv(path, header=None)
+        df = pd.read_csv(path, header=None)
         # store the inputs and outputs
-        self.X = df.values[1:, :-6].astype('float32')
-        self.y = df.values[1:, -6:].astype('float32')
-        print(self.X.shape)
-        print(self.y.shape)
-        # ensure target has the right shape
-        self.y = self.y.reshape((len(self.y), 6))
+        self.X = df.to_numpy()[1:,SETPOINT:CURRENT]
+        self.y = df.to_numpy()[1:,ACCELERATION]
+        print(self.X)
+        print(self.y)
 
     # number of rows in the dataset
     def __len__(self):
@@ -101,6 +102,14 @@ class MLP(Module):
 
 
 ### FUNCTIONS ###
+
+def compute_acceleration(df):
+    # Transform to numpy array for computations
+    data = df.to_numpy()
+    # Compute acceleration from velocity difference and divide by period
+    data[:,ACCELERATION] = np.append(np.nan, np.diff(data[:,VELOCITY])/ data[1:,PERIOD]*1000 ) 
+    # Transform back to dataframe
+    return pd.DataFrame(data, columns = df.columns.values)
 
 # prepare the dataset
 def prepare_data(path, dev):
@@ -191,16 +200,15 @@ def main():
         dev = "cpu"
         print("Using CPU D:")
 
-    now = datetime.now()
-    # Month abbreviation, day and year - H:M
-    dt_string = now.strftime("%b-%d-%Y-%H:%M")
-    os.makedirs("../models/"+dt_string, exist_ok=True)
+    os.makedirs("../models/", exist_ok=True)
 
     # prepare the data
-    path = '../data/delta_fixed_small.csv'
+    list_of_files = glob.glob('../data/*.csv')
+    path = max(list_of_files, key=os.path.getctime)
+    #path = '../data/2023-02-21--14-05-03_dataset.csv'
     train_dl, test_dl = prepare_data(path, dev)
     print(len(train_dl.dataset), len(test_dl.dataset))
-    # define the network
+"""     # define the network
     model = MLP(15, dev, 512)
     # train the model
     train_model(train_dl, model, dev, dt_string, lr=0.01)
@@ -220,7 +228,7 @@ def main():
     gt = [list(x) for x in zip(*gt)]
     plt.plot(predictions[0], color='red')
     plt.plot(gt[0], color='blue')
-    plt.show()
+    plt.show() """
 
     # torch.save(
     #     model, '/home/eugenio/catkin_ws/src/delta_control/scripts/NNIdentification/fixed_delta.pt')
@@ -230,3 +238,7 @@ def main():
     #        65.20, 4.0900, 1, 296.0, 15.30, 396.90, 4.98]
     # yhat = predict(row, model,dev)
     # print('Predicted: %.3f' % yhat)
+
+
+if __name__ == "__main__":
+    main()

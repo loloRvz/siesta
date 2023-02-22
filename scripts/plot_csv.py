@@ -8,22 +8,9 @@ import os, glob
 
 from IPython.display import display
 
-from mlp import CSVDataset
-
-
-SETPOINT, POSITION, VELOCITY, CURRENT, PERIOD, ACCELERATION = range(6)
+from siesta_mlp import *
 
 ### FUNCTIONS ###
-
-def compute_acceleration(df):
-    # Transform to numpy array for computations
-    data = df.to_numpy()
-
-    # Compute acceleration from velocity difference and divide by period
-    data[:,ACCELERATION] = np.append(np.nan, np.diff(data[:,VELOCITY])/ data[1:,PERIOD]*1000 ) 
-
-    # Transform back to dataframe
-    return pd.DataFrame(data, columns = df.columns.values)
 
 def plot_df(df):
     data = df.to_numpy()
@@ -62,7 +49,7 @@ def add_acceleration_column(df):
 list_of_files = glob.glob('../data/*.csv')
 path = max(list_of_files, key=os.path.getctime)
 
-path = '../data/2023-02-21--13-21-23_dataset.csv'
+#path = '../data/2023-02-21--14-05-03_dataset.csv'
 
 print("Reading data from " + path)
 df = pd.read_csv(path)
