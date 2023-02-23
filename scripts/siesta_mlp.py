@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os, glob
 import math
 
-from derivative import dxdt
+from derivative import dxdt, FiniteDifference, SavitzkyGolay, Spectral, TrendFiltered
 
 import torch
 from torch.nn.init import xavier_uniform_
@@ -110,16 +110,17 @@ def prepare_data(path):
     # Load dataset & convert to np
     df= pd.read_csv(path)
     data = df.to_numpy()
-    resave = False
+
+    fd = SavitzkyGolay(left=.005, right=.005, order=2, periodic=True)
 
     # Compute velocity from position 
     if True: #np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1:
-        data[:,VELOCITY_COMP] = dxdt(data[:,POSITION],data[:,TIME]*TIME_UNIT,kind="finite_difference", k=1)
+        data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
         resave = True
 
     # Compute acceleration from velocity or velocity_comp
     if True: #np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1:
-        data[:,ACCELERATION_COMP] = dxdt(data[:,VELOCITY],data[:,TIME]*TIME_UNIT,kind="finite_difference", k=1)
+        data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME]*TIME_UNIT)
         resave = True
     
     # Save dataframe to csv if velocity or acceleration computed
@@ -133,26 +134,32 @@ def prepare_data(path):
 # plot dataset
 def plot_df(df):
     data = df.to_numpy()
-    print(data)
 
     # Make data a bit more readable - ignore units for now
     data[:,SETPOINT] -= math.pi
     data[:,POSITION] -= math.pi
     data[:,CURRENT] /= 1000
-    data[:,VELOCITY] /= 5
-    data[:,VELOCITY_COMP] /= 5
-    data[:,ACCELERATION_COMP] /= 100
-
-    #Compute velocity from position values
-    #vel_computed = np.append(np.nan, np.diff(data[:,POSITION])/ data[1:,PERIOD]*1000 ) / 10
+    data[:,VELOCITY] /= 10
+    data[:,VELOCITY_COMP] /= 10
+    data[:,ACCELERATION_COMP] /= 1000
 
     fig,ax=plt.subplots()
-    ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
-    #ax.plot(vel_computed)
+    #ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
+    ax.plot(data[:,TIME],data[:,SETPOINT])
+    ax.plot(data[:,TIME],data[:,POSITION])
+    ax.plot(data[:,TIME],data[:,VELOCITY])
+    ax.plot(data[:,TIME],data[:,VELOCITY_COMP])
+    ax.plot(data[:,TIME],data[:,ACCELERATION_COMP])
+    ax.plot(data[:,TIME],data[:,CURRENT])
     ax.axhline(y=0, color='k')
     ax.set_xlabel("Time [ms]")
-    ax.set_ylabel("Measure")
-    ax.legend(df.columns.values[SETPOINT:ACCELERATION_COMP+1])
+    ax.set_ylabel("Amplitude")
+    ax.legend([ "Setpoint [rad]", \
+                "Posistion [rad]", \
+                "Velocity [10rad/s]", \
+                "Derived Velocity [10rad/s]", \
+                "Derived Accleration [1000rad/s^2]", \
+                "Current [A]"])
     plt.title("Motor data reading @400Hz")
     plt.show()
 
@@ -228,7 +235,8 @@ def main():
     # prepare the data
     list_of_files = glob.glob('../data/*.csv')
     path = max(list_of_files, key=os.path.getctime)
-    #path = '../data/2023-02-21--14-05-03_dataset.csv'
+    #path = '../data/2023-02-22--15-00-04_dataset.csv'
+    print("Opening: ",path)
 
     df = prepare_data(path)
     plot_df(df)

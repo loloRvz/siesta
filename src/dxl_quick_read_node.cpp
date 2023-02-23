@@ -77,7 +77,7 @@ int main(int argc, char ** argv) {
     readBackStatus = ta_adapter.read();
 
     // Write data to csv file
-    sprintf(data_string, "%05.2f,%03.2f,%03.2f,%03.2f,%03.2f,%03.2f,%03.2f\n",
+    sprintf(data_string, "%010.3f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f\n",
             duration_cast<microseconds>(t_now - t_start).count()/1000.0,
             readBackStatus[0].setpoint, 
             readBackStatus[0].position, 
