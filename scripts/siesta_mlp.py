@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os, glob
 import math
 
-from derivative import dxdt, FiniteDifference, SavitzkyGolay, Spectral, TrendFiltered
+from derivative import FiniteDifference, SavitzkyGolay
 
 import torch
 from torch.nn.init import xavier_uniform_
@@ -37,17 +37,84 @@ class CSVDataset(Dataset):
     # load the dataset
     def __init__(self, path):
         # load the csv file as a dataframe
-        self.df = pd.read_csv(path, header=None)
-        # store the inputs and outputs
-        #self.X = df.to_numpy()[1:,SETPOINT:CURRENT]
+        self.path = path
+        self.df = pd.read_csv(path)
+        self.X = np.empty([1,1])
+        
+    # preprocess data (compute velocities and accelerations)
+    def preprocess(self):
+        data = (self.df).to_numpy()
 
-    # number of rows in the dataset
-    def __len__(self):
-        return len(self.X)
+        # Compute position derivatives if necessary
+        fd = SavitzkyGolay(left=8, right=1, order=2, iwindow=True)
+        resave = False
+        # Compute velocity from position 
+        if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1:
+            data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
+            resave = True
+        # Compute acceleration from velocity or velocity_comp
+        if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1:
+            data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME]*TIME_UNIT)
+            resave = True
+        
+        # Save dataframe to csv if velocity or acceleration computed
+        if resave:
+            print("Resaving dataframe to csv")
+            df = pd.DataFrame(data, columns = df.columns.values)
+            df.to_csv(self.path, index=False)
 
-    # get a row at an index
-    def __getitem__(self, idx):
-        return [self.X[idx], self.y[idx]]
+    # plot dataset
+    def plot_data(self):
+        data = self.df.to_numpy()
+
+        # Make data a bit more readable - ignore units for now
+        data[:,SETPOINT] -= math.pi
+        data[:,POSITION] -= math.pi
+        data[:,CURRENT] /= 1000
+        data[:,VELOCITY] /= 10
+        data[:,VELOCITY_COMP] /= 10
+        data[:,ACCELERATION_COMP] /= 1000
+
+        fig,ax=plt.subplots()
+        #ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
+        ax.plot(data[:,TIME],data[:,SETPOINT])
+        ax.plot(data[:,TIME],data[:,POSITION])
+        ax.plot(data[:,TIME],data[:,VELOCITY])
+        ax.plot(data[:,TIME],data[:,VELOCITY_COMP])
+        ax.plot(data[:,TIME],data[:,ACCELERATION_COMP])
+        ax.plot(data[:,TIME],data[:,CURRENT])
+        ax.axhline(y=0, color='k')
+        ax.set_xlabel("Time [ms]")
+        ax.set_ylabel("Amplitude")
+        ax.legend([ "Setpoint [rad]", \
+                    "Posistion [rad]", \
+                    "Velocity [10rad/s]", \
+                    "Derived Velocity [10rad/s]", \
+                    "Derived Accleration [1000rad/s^2]", \
+                    "Current [A]"])                        
+        plt.title("Motor data reading @400Hz")
+
+        """ 
+        fig2,ax=plt.subplots()
+        plt.scatter(data[:,ACCELERATION_COMP],data[:,CURRENT])
+        ax.set_xlabel("Acceleration [1000rad/^2]")
+        ax.set_ylabel("Current [A]")                      
+        plt.title("Current vs Acceleration Relation")
+        """
+
+        plt.show()
+
+    # prepare inputs and labels for learning process
+    def prepare_input_output(self,hist_length):
+        data = self.df.to_numpy()
+        self.X = np.resize(self.X,(data.shape[0],hist_length))
+
+        #Get position history
+        for i in range(hist_length):
+            self.X[:,hist_length-(i+1)] = np.roll(data[:,POSITION], i)
+            self.X[:i,hist_length-(i+1)] = np.nan
+        print(self.X[:30,:])
+
 
     # get indexes for train and test rows
     def get_splits(self, n_test=0.1):
@@ -105,64 +172,6 @@ class MLP(Module):
 
 ### FUNCTIONS ###
 
-# prepare dataset
-def prepare_data(path):
-    # Load dataset & convert to np
-    df= pd.read_csv(path)
-    data = df.to_numpy()
-
-    fd = SavitzkyGolay(left=.005, right=.005, order=2, periodic=True)
-
-    # Compute velocity from position 
-    if True: #np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1:
-        data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
-        resave = True
-
-    # Compute acceleration from velocity or velocity_comp
-    if True: #np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1:
-        data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME]*TIME_UNIT)
-        resave = True
-    
-    # Save dataframe to csv if velocity or acceleration computed
-    if resave:
-        print("Resaving dataframe to csv")
-        df = pd.DataFrame(data, columns = df.columns.values)
-        df.to_csv(path, index=False)
-
-    return df
-
-# plot dataset
-def plot_df(df):
-    data = df.to_numpy()
-
-    # Make data a bit more readable - ignore units for now
-    data[:,SETPOINT] -= math.pi
-    data[:,POSITION] -= math.pi
-    data[:,CURRENT] /= 1000
-    data[:,VELOCITY] /= 10
-    data[:,VELOCITY_COMP] /= 10
-    data[:,ACCELERATION_COMP] /= 1000
-
-    fig,ax=plt.subplots()
-    #ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
-    ax.plot(data[:,TIME],data[:,SETPOINT])
-    ax.plot(data[:,TIME],data[:,POSITION])
-    ax.plot(data[:,TIME],data[:,VELOCITY])
-    ax.plot(data[:,TIME],data[:,VELOCITY_COMP])
-    ax.plot(data[:,TIME],data[:,ACCELERATION_COMP])
-    ax.plot(data[:,TIME],data[:,CURRENT])
-    ax.axhline(y=0, color='k')
-    ax.set_xlabel("Time [ms]")
-    ax.set_ylabel("Amplitude")
-    ax.legend([ "Setpoint [rad]", \
-                "Posistion [rad]", \
-                "Velocity [10rad/s]", \
-                "Derived Velocity [10rad/s]", \
-                "Derived Accleration [1000rad/s^2]", \
-                "Current [A]"])
-    plt.title("Motor data reading @400Hz")
-    plt.show()
-
 # train model
 def train_model(train_dl, model, dev, dt_string, lr):
     # define the optimization
@@ -214,7 +223,7 @@ def evaluate_model(test_dl, model):
         # store
         predictions.append(yhat)
         actuals.append(actual)
-    predictions, actuals = vstack(predictions), vstack(actuals)
+    predictions, actuals = np.vstack(predictions), np.vstack(actuals)
     # calculate mse
     mse = mean_squared_error(actuals, predictions)
     return mse
@@ -238,10 +247,10 @@ def main():
     #path = '../data/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
-    df = prepare_data(path)
-    plot_df(df)
-
-
+    dataset = CSVDataset(path)
+    dataset.preprocess()
+    #dataset.plot_data()
+    dataset.prepare_input_output(5)
 
 if __name__ == "__main__":
     main()
