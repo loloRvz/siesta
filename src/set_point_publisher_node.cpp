@@ -5,24 +5,9 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
 
-#include "input_signal_params.h"
+#include "experiment_parameters.h"
 
-using namespace input_signal_params;
-
-/*** Load input signal parameters ***/
-void load_params(ros::NodeHandle nh){
-  nh.getParam("/input/frequency",           INPUT_FREQ);
-  nh.getParam("/input/type",                INPUT_TYPE);
-  nh.getParam("/input/centre_point",        INPUT_CENTRE_POINT);
-
-  nh.getParam("/input/gaussian/frequency",  GAUS_FREQ);
-  nh.getParam("/input/gaussian/variance",  GAUS_VARIANCE);
-
-  nh.getParam("/input/chirp/amplitude",     CHRP_AMPLITUDE);
-  nh.getParam("/input/chirp/frequency1",    CHRP_FREQ1);
-  nh.getParam("/input/chirp/frequency2",    CHRP_FREQ2);
-  nh.getParam("/input/chirp/period",        CHRP_PERIOD);
-}
+using namespace experiment_parameters;
 
 /*** Input generator functions ***/
 double rand_signal(double r){
@@ -39,18 +24,18 @@ double chirp_signal(double time){
 
 /*** MAIN ***/
 int main(int argc, char ** argv) {
-  //Init ros stuff
+  //Init rosnode and setpoint publisher
   ros::init(argc, argv, "set_point_publisher_node");
   ros::NodeHandle nh;
   ros::Publisher set_point_pub = nh.advertise<std_msgs::Float32>("/set_position", 1000);
   std_msgs::Float32 msg;
 
-  //Parameters
+  // Get experiment parameters
   load_params(nh);
 
-  //RNG
+  //RNG for random step input
   std::default_random_engine generator;
-  std::normal_distribution<double> distribution(INPUT_CENTRE_POINT,sqrt(GAUS_VARIANCE));
+  std::normal_distribution<double> distribution(INPUT_CENTRE_POINT,sqrt(STEP_VARIANCE));
   int count = 0;
 
   ros::Rate rate(INPUT_FREQ);
@@ -59,8 +44,8 @@ int main(int argc, char ** argv) {
     // Generate input depending on input type
     switch(INPUT_TYPE){
 
-      case GAUS:
-        if(count > INPUT_FREQ/GAUS_FREQ){
+      case STEP:
+        if(count > INPUT_FREQ/STEP_FREQ){
           msg.data = rand_signal(distribution(generator)); // Generate random variable with normal distribution
           count = 0;
         }else{count++;}

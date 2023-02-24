@@ -40,6 +40,7 @@ class CSVDataset(Dataset):
         self.path = path
         self.df = pd.read_csv(path)
         self.X = np.empty([1,1])
+        self.y = np.empty([1,1])
         
     # preprocess data (compute velocities and accelerations)
     def preprocess(self):
@@ -109,12 +110,17 @@ class CSVDataset(Dataset):
         data = self.df.to_numpy()
         self.X = np.resize(self.X,(data.shape[0],hist_length))
 
-        #Get position history
-        for i in range(hist_length):
-            self.X[:,hist_length-(i+1)] = np.roll(data[:,POSITION], i)
-            self.X[:i,hist_length-(i+1)] = np.nan
-        print(self.X[:30,:])
+        # Get position error (setpoint-position)
+        position_error = data[:,SETPOINT] - data[:,POSITION]
+        print(position_error[:30])
 
+        #Get position error history
+        for i in range(hist_length):
+            self.X[:,hist_length-(i+1)] = np.roll(position_error, i)
+            self.X[:i,hist_length-(i+1)] = np.nan
+
+        #Cut out t<0 
+        self.X = self.X[hist_length-1:,:]
 
     # get indexes for train and test rows
     def get_splits(self, n_test=0.1):

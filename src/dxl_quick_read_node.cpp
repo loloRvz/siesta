@@ -10,9 +10,9 @@
 #include "omav_hovery_interface/ll/polling_thread.h"
 
 #include "motor_specs.h"
-#include "input_signal_params.h"
+#include "experiment_parameters.h"
 
-using namespace input_signal_params;
+using namespace experiment_parameters;
 
 #define POLLING_FREQ 400
 
@@ -32,13 +32,16 @@ class PositionSetter{
 
 
 int main(int argc, char ** argv) {
-  PositionSetter ps;
 
-  // Init rosnode and subscribe to setpoint topic
+  // Init rosnode and subscribe to setpoint topic with callback to position setter
   ros::init(argc, argv, "dxl_quick_read_node");
   ros::NodeHandle nh;
+  PositionSetter ps;
   ros::Subscriber set_position_sub = nh.subscribe(setpoint_topic_, 1000, &PositionSetter::setPointCallback, &ps);
   ros::Rate rate(POLLING_FREQ);
+
+  // Get experiment parameters
+  load_params(nh);
 
   // Declare motors & interfaces
   std::array<int, 1> dynamixels = {DXL1_ID};
@@ -50,22 +53,37 @@ int main(int argc, char ** argv) {
   ta_adapter.open();
   ta_adapter.enable();
 
-  // Open file to write data
-  time_t curr_time;
-	tm * curr_tm;
-	char filename_string[100], data_string[100];
+  // Create filename for exprmt data
+  time_t curr_time; 
+  tm * curr_tm;
+	char file_str[100], time_str[100], exprmt_descr_str[100], data_str[100];
+  strcpy(file_str, "/home/lolo/siesta_ws/src/siesta/data/"); //Global path
   time(&curr_time);
 	curr_tm = localtime(&curr_time);
-  strftime(filename_string, 100, "/home/lolo/siesta_ws/src/siesta/data/%Y-%m-%d--%H-%M-%S_dataset.csv", curr_tm); // Create filename with date&time
+  strftime(time_str, 100, "%y-%m-%d--%H-%M-%S_", curr_tm);
+  strcat(file_str,time_str);  // Add date & time
+  sprintf(exprmt_descr_str, "L%d",LOAD_ID);
+  strcat(file_str,exprmt_descr_str); //Add load id
+  //Add input type
+  if(INPUT_TYPE == STEP){
+    strcat(file_str,"-step");
+  }else if(INPUT_TYPE == CHRP){
+    strcat(file_str,"-chrp");
+  }
+  strcat(file_str,".csv");
+
+  // Open file to write data
   std::ofstream myfile;
-  myfile.open(filename_string);
+  myfile.open(file_str);
   myfile << "time[ms],setpoint[rad],position[rad],velocity[rad/s],current[mA],velocity_computed[rad/s],acceleration_computed[rad/s^2]\n"; // Set column descriptions
 
   // Time variables
   time_point t_now = std::chrono::system_clock::now();
   time_point t_start = std::chrono::system_clock::now();
 
+  // Wait for first setpoint topic to be published
   ros::topic::waitForMessage<std_msgs::Float32>(setpoint_topic_,ros::Duration(5));
+  
   ROS_INFO("Polling motor...");
   while (ros::ok()) {
     // Measure exact loop time
@@ -77,7 +95,7 @@ int main(int argc, char ** argv) {
     readBackStatus = ta_adapter.read();
 
     // Write data to csv file
-    sprintf(data_string, "%010.3f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f\n",
+    sprintf(data_str, "%010.3f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f\n",
             duration_cast<microseconds>(t_now - t_start).count()/1000.0,
             readBackStatus[0].setpoint, 
             readBackStatus[0].position, 
@@ -85,7 +103,7 @@ int main(int argc, char ** argv) {
             readBackStatus[0].current,
             NAN,
             NAN);
-    myfile << data_string;
+    myfile << data_str;
 
     // Loop
     ros::spinOnce();
