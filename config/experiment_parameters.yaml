@@ -1,4 +1,4 @@
-load_id : 1   # Choose Load 1,2,3
+load_id : 2   # Choose Load 1,2,3
 
 input:
   frequency: 200

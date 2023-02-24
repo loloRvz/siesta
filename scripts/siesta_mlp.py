@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os, glob
 import math
 
+from datetime import datetime
 from derivative import FiniteDifference, SavitzkyGolay
 
 import torch
@@ -29,6 +30,10 @@ TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP = 
 
 TIME_UNIT = 0.001   # ms
 
+LOAD_INERTIAS = np.array([224.5440144e-6, \
+                          548.4378187e-6, \
+                          287.7428055e-6])    #kg*m^2
+
 
 ### CLASSES ###
 
@@ -39,8 +44,8 @@ class CSVDataset(Dataset):
         # load the csv file as a dataframe
         self.path = path
         self.df = pd.read_csv(path)
-        self.X = np.empty([1,1])
-        self.y = np.empty([1,1])
+        self.X = np.empty([1,1]).astype('float32')
+        self.y = np.empty([1]).astype('float32')
         
     # preprocess data (compute velocities and accelerations)
     def preprocess(self):
@@ -61,7 +66,7 @@ class CSVDataset(Dataset):
         # Save dataframe to csv if velocity or acceleration computed
         if resave:
             print("Resaving dataframe to csv")
-            df = pd.DataFrame(data, columns = df.columns.values)
+            df = pd.DataFrame(data, columns = self.df.columns.values)
             df.to_csv(self.path, index=False)
 
     # plot dataset
@@ -106,21 +111,22 @@ class CSVDataset(Dataset):
         plt.show()
 
     # prepare inputs and labels for learning process
-    def prepare_input_output(self,hist_length):
+    def prepare_data(self,hist_length):
         data = self.df.to_numpy()
         self.X = np.resize(self.X,(data.shape[0],hist_length))
 
         # Get position error (setpoint-position)
         position_error = data[:,SETPOINT] - data[:,POSITION]
-        print(position_error[:30])
-
         #Get position error history
         for i in range(hist_length):
             self.X[:,hist_length-(i+1)] = np.roll(position_error, i)
             self.X[:i,hist_length-(i+1)] = np.nan
+        self.X = self.X[hist_length-1:,:] #Cut out t<0
 
-        #Cut out t<0 
-        self.X = self.X[hist_length-1:,:]
+        # Compute torque depending on load inertia (declared in filename)
+        load_id = int(os.path.basename(self.path)[20]) 
+        self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id-1]
+        self.y = self.y[hist_length-1:] #Cut out t<0
 
     # get indexes for train and test rows
     def get_splits(self, n_test=0.1):
@@ -128,12 +134,25 @@ class CSVDataset(Dataset):
         test_size = round(n_test * len(self.X))
         train_size = len(self.X) - test_size
         # calculate the split
-        return random_split(self, [train_size, test_size])
+        train, test = random_split(self, [train_size, test_size])
+        train_dl = DataLoader(train, batch_size=32, shuffle=True,
+                    pin_memory=True)
+        test_dl = DataLoader(test, batch_size=1024, shuffle=False,
+                            pin_memory=True)
+        return train_dl, test_dl
+
+    # number of rows in the dataset
+    def __len__(self):
+        return len(self.X)
+
+    # get a row at an index
+    def __getitem__(self, idx):
+        return [self.X[idx], self.y[idx]]
 
 # model definition
 class MLP(Module):
     # define model elements
-    def __init__(self, n_inputs, dev, layerDim):
+    def __init__(self, n_inputs, n_outputs, dev, layerDim):
         super(MLP, self).__init__()
         self.dev = dev
         # input to first hidden layer
@@ -153,7 +172,7 @@ class MLP(Module):
         xavier_uniform_(self.hidden4.weight).to(self.dev)
         self.act4 = Softsign().to(self.dev)
         # fifth hidden layer and output
-        self.hidden5 = Linear(int(layerDim/2), 6).to(self.dev)
+        self.hidden5 = Linear(int(layerDim/2), n_outputs).to(self.dev)
         xavier_uniform_(self.hidden5.weight).to(self.dev)
 
     # forward propagate input
@@ -247,16 +266,51 @@ def predict(row, model, dev):
 
 ### SCRIPT ###
 def main():
-    # prepare the data
-    list_of_files = glob.glob('../data/*.csv')
+    if torch.cuda.is_available():
+        dev = "cuda:0"
+        print("Using GPU!")
+    else:
+        dev = "cpu"
+        print("Using CPU D:")
+
+    # Open measured data
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    list_of_files = glob.glob(dir_path + '/../data/*.csv')
+    cwd = os.getcwd()
     path = max(list_of_files, key=os.path.getctime)
     #path = '../data/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
+    # Prepare dataset
     dataset = CSVDataset(path)
     dataset.preprocess()
     #dataset.plot_data()
-    dataset.prepare_input_output(5)
+    dataset.prepare_data(hist_length=5)
+    train_dl, test_dl = dataset.get_splits() # Get data loaders
+
+    # Network training
+    os.makedirs("../models/"+os.path.basename(path), exist_ok=True)
+
+    model = MLP(5, 1, dev, 32)
+    train_model(train_dl, model, dev, os.path.basename(path), lr=0.01)   # train the model
+    mse = evaluate_model(test_dl, model) # evaluate the model
+    print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
+
+    # Evaluation
+    predictions = []
+    gt = []
+    for i in range(0, len(test_dl.dataset)):
+        row = test_dl.dataset[i][0]
+        predictions.append(predict(row, model, dev))
+        gt.append(test_dl.dataset[i][1])
+
+    # Rearrange lists
+    predictions = [list(x) for x in zip(*predictions)]
+    gt = [list(x) for x in zip(*gt)]
+    plt.plot(predictions[0], color='red')
+    plt.plot(gt[0], color='blue')
+    plt.show()
+
 
 if __name__ == "__main__":
     main()

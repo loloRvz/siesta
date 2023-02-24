@@ -52,3 +52,6 @@ CATKIN_IGNORE
 
 # Measured data
 data/*.csv
+
+scripts/__pycache__/
+scripts/runs/
