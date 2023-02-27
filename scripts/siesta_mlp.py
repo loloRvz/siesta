@@ -66,7 +66,7 @@ class CSVDataset(Dataset):
         # Save dataframe to csv if velocity or acceleration computed
         if resave:
             print("Resaving dataframe to csv")
-            df = pd.DataFrame(data, columns = self.df.columns.values)
+            df = pd.DataFrame(data, columns = self.df.columns.values, dtype=np.float32)
             df.to_csv(self.path, index=False)
 
     # plot dataset
@@ -207,11 +207,12 @@ def train_model(train_dl, model, dev, dt_string, lr):
     epoch = 0
     try:
         while True:
+            print(epoch)
             meanLoss = 0
             steps = 0
             # enumerate mini batches
             for i, (inputs, targets) in enumerate(train_dl):
-                inputs, targets = inputs.to(dev), targets.to(dev)
+                inputs, targets = inputs.to(dev), targets.to(dev).unsqueeze(1).float()
                 # clear the gradients
                 optimizer.zero_grad()
                 # compute the model output
@@ -229,7 +230,7 @@ def train_model(train_dl, model, dev, dt_string, lr):
             writer.add_scalar('Loss/train', meanLoss, epoch)
             if epoch % 5000 == 0:
                 model_scripted = torch.jit.script(model)
-                model_scripted.save("./models/"+dt_string +
+                model_scripted.save("../models/"+dt_string +
                                     "/delta_"+str(epoch)+".pt")
             epoch = epoch + 1
     except KeyboardInterrupt:

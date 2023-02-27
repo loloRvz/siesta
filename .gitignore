@@ -55,3 +55,4 @@ data/*.csv
 
 scripts/__pycache__/
 scripts/runs/
+models/*
