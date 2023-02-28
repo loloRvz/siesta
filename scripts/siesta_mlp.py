@@ -17,9 +17,8 @@ from torch.nn import Module
 from torch.nn import Softsign
 from torch.nn import Linear
 from torch import Tensor
-from torch.utils.data import random_split
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
+from torch.utils.data import random_split, Subset, DataLoader, Dataset
+
 from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.metrics import mean_squared_error
@@ -119,13 +118,14 @@ class CSVDataset(Dataset):
         position_error = data[:,SETPOINT] - data[:,POSITION]
         #Get position error history
         for i in range(hist_length):
-            self.X[:,hist_length-(i+1)] = np.roll(position_error, i)
+            self.X[:,i] = np.roll(position_error, i)
             self.X[:i,hist_length-(i+1)] = np.nan
         self.X = self.X[hist_length-1:,:] #Cut out t<0
 
         # Compute torque depending on load inertia (declared in filename)
         load_id = int(os.path.basename(self.path)[20]) 
-        self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id-1]
+        #self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id-1]
+        self.y = data[:,VELOCITY_COMP]
         self.y = self.y[hist_length-1:] #Cut out t<0
 
     # get indexes for train and test rows
@@ -133,8 +133,14 @@ class CSVDataset(Dataset):
         # determine sizes
         test_size = round(n_test * len(self.X))
         train_size = len(self.X) - test_size
+        print("Training size: ", train_size)
+        print("Testing size: ", test_size)
+
         # calculate the split
-        train, test = random_split(self, [train_size, test_size])
+        #train, test = random_split(self, [train_size, test_size])
+        train = Subset(self, range(train_size))
+        test = Subset(self, range(train_size, train_size + test_size))
+
         train_dl = DataLoader(train, batch_size=32, shuffle=True,
                     pin_memory=True)
         test_dl = DataLoader(test, batch_size=1024, shuffle=False,
@@ -232,6 +238,7 @@ def train_model(train_dl, model, dev, dt_string, lr):
                 model_scripted = torch.jit.script(model)
                 model_scripted.save("../models/"+dt_string +
                                     "/delta_"+str(epoch)+".pt")
+            #if epoch>= 100: break
             epoch = epoch + 1
     except KeyboardInterrupt:
         print('interrupted!')
@@ -245,24 +252,14 @@ def evaluate_model(test_dl, model):
         # retrieve numpy array
         yhat = yhat.detach().cpu().numpy()
         actual = targets.cpu().numpy()
-        actual = actual.reshape((len(actual), 6))
+        actual = actual.reshape((len(actual), 1))
         # store
         predictions.append(yhat)
         actuals.append(actual)
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
     # calculate mse
     mse = mean_squared_error(actuals, predictions)
-    return mse
-
-# make class prediction for one row of data
-def predict(row, model, dev):
-    # convert row to data
-    row = Tensor([row]).to(dev)
-    # make prediction
-    yhat = model(row)
-    # retrieve numpy array
-    yhat = yhat.detach().cpu().numpy()
-    return yhat[0]
+    return mse, actuals, predictions
 
 
 ### SCRIPT ###
@@ -294,22 +291,15 @@ def main():
 
     model = MLP(5, 1, dev, 32)
     train_model(train_dl, model, dev, os.path.basename(path), lr=0.01)   # train the model
-    mse = evaluate_model(test_dl, model) # evaluate the model
+    mse, true_vals, est_vals = evaluate_model(test_dl, model) # evaluate the model
     print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
 
-    # Evaluation
-    predictions = []
-    gt = []
-    for i in range(0, len(test_dl.dataset)):
-        row = test_dl.dataset[i][0]
-        predictions.append(predict(row, model, dev))
-        gt.append(test_dl.dataset[i][1])
-
     # Rearrange lists
-    predictions = [list(x) for x in zip(*predictions)]
-    gt = [list(x) for x in zip(*gt)]
-    plt.plot(predictions[0], color='red')
-    plt.plot(gt[0], color='blue')
+    plt.plot(test_dl.dataset[:][0][:,0])
+    plt.plot(true_vals/10)
+    plt.plot(est_vals/10)
+    plt.legend(["Position [rad]","Derived Velocity [10rad/s]","Predicted Velocities [10rad/s]"])
+    plt.title("Model Validation")
     plt.show()
 
 
