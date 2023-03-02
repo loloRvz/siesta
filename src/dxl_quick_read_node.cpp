@@ -111,6 +111,7 @@ int main(int argc, char ** argv) {
   }
   ROS_INFO("Stopped polling motor. Exiting...");
 
+  ta_adapter.disable();
   myfile.close();
   return 0;
 }

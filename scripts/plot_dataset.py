@@ -11,7 +11,7 @@ def main():
     list_of_files = glob.glob(dir_path + '/../data/*.csv')
     cwd = os.getcwd()
     path = max(list_of_files, key=os.path.getctime)
-    #path = '../data/2023-02-22--15-00-04_dataset.csv'
+    #path = '../data/23-02-28--13-24-40_L1-step.csv'
     print("Opening: ",path)
 
     # Prepare & plot dataset

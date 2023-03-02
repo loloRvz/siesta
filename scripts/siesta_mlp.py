@@ -7,7 +7,7 @@ import os, glob
 import math
 
 from datetime import datetime
-from derivative import FiniteDifference, SavitzkyGolay
+from derivative import FiniteDifference, SavitzkyGolay, Kalman, Spectral
 
 import torch
 from torch.nn.init import xavier_uniform_
@@ -29,7 +29,8 @@ TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP = 
 
 TIME_UNIT = 0.001   # ms
 
-LOAD_INERTIAS = np.array([224.5440144e-6, \
+LOAD_INERTIAS = np.array([1, \
+                          224.5440144e-6, \
                           548.4378187e-6, \
                           287.7428055e-6])    #kg*m^2
 
@@ -52,13 +53,14 @@ class CSVDataset(Dataset):
 
         # Compute position derivatives if necessary
         fd = SavitzkyGolay(left=8, right=1, order=2, iwindow=True)
+
         resave = False
         # Compute velocity from position 
-        if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1:
+        if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
             resave = True
         # Compute acceleration from velocity or velocity_comp
-        if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1:
+        if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1 or resave:
             data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME]*TIME_UNIT)
             resave = True
         
@@ -123,8 +125,8 @@ class CSVDataset(Dataset):
         self.X = self.X[hist_length-1:,:] #Cut out t<0
 
         # Compute torque depending on load inertia (declared in filename)
-        load_id = int(os.path.basename(self.path)[20]) 
-        #self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id-1]
+        load_id = int(os.path.basename(self.path)[20])
+        #self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id]
         self.y = data[:,VELOCITY_COMP]
         self.y = self.y[hist_length-1:] #Cut out t<0
 
@@ -136,16 +138,18 @@ class CSVDataset(Dataset):
         print("Training size: ", train_size)
         print("Testing size: ", test_size)
 
+        test_range = range(train_size, train_size + test_size)
+
         # calculate the split
         #train, test = random_split(self, [train_size, test_size])
         train = Subset(self, range(train_size))
-        test = Subset(self, range(train_size, train_size + test_size))
+        test = Subset(self, test_range)
 
         train_dl = DataLoader(train, batch_size=32, shuffle=True,
                     pin_memory=True)
         test_dl = DataLoader(test, batch_size=1024, shuffle=False,
-                            pin_memory=True)
-        return train_dl, test_dl
+                    pin_memory=True)
+        return train_dl, test_dl, test_range
 
     # number of rows in the dataset
     def __len__(self):
@@ -279,26 +283,32 @@ def main():
     #path = '../data/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
+    pos_hist_len = 5
+
     # Prepare dataset
     dataset = CSVDataset(path)
     dataset.preprocess()
     #dataset.plot_data()
-    dataset.prepare_data(hist_length=5)
-    train_dl, test_dl = dataset.get_splits() # Get data loaders
+    dataset.prepare_data(hist_length=pos_hist_len)
+    train_dl, test_dl, test_range = dataset.get_splits() # Get data loaders
 
     # Network training
     os.makedirs("../models/"+os.path.basename(path), exist_ok=True)
 
-    model = MLP(5, 1, dev, 32)
+    model = MLP(pos_hist_len, 1, dev, 32)
     train_model(train_dl, model, dev, os.path.basename(path), lr=0.01)   # train the model
     mse, true_vals, est_vals = evaluate_model(test_dl, model) # evaluate the model
     print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
 
-    # Rearrange lists
-    plt.plot(test_dl.dataset[:][0][:,0])
-    plt.plot(true_vals/10)
-    plt.plot(est_vals/10)
-    plt.legend(["Position [rad]","Derived Velocity [10rad/s]","Predicted Velocities [10rad/s]"])
+    # Plot validation dataset to time
+    fig,ax=plt.subplots()
+    ax.plot(dataset.df.to_numpy()[test_range,TIME], \
+        np.column_stack((test_dl.dataset[:][0][:,0], \
+        np.squeeze(true_vals)/10, \
+        np.squeeze(est_vals)/10)))
+    ax.set_xlabel("Time [ms]")
+    ax.set_ylabel("Amplitude")
+    ax.legend(["Position error [rad]","Derived velocity [10rad/s]","Predicted velocities [10rad/s]"])
     plt.title("Model Validation")
     plt.show()
 

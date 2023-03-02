@@ -1,15 +1,15 @@
-load_id : 1   # Choose Load 1,2,3
+load_id : 1   # Choose Load '1','2','3', or '0' for no load
 
 input:
   frequency: 200
 
-  type: 1     # 0: 'step' | 1: 'chirp'
+  type: 0     # 0: 'step' | 1: 'chirp'
   centre_point: 3.1415926536
 
   # Params for random step input
   step:
     frequency: 5
-    variance: 0.3
+    variance: 0.1
 
   # Params for chirp input
   chirp:
