@@ -8,6 +8,7 @@ import math
 
 from datetime import datetime
 from derivative import FiniteDifference, SavitzkyGolay, Kalman, Spectral
+from scipy import signal
 
 import torch
 from torch.nn.init import xavier_uniform_
@@ -27,8 +28,8 @@ from sklearn.metrics import mean_squared_error
 # Data columns
 TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP = range(7)
 
+SAMPLING_FREQ = 400 # Hz
 TIME_UNIT = 0.001   # ms
-
 LOAD_INERTIAS = np.array([1, \
                           224.5440144e-6, \
                           548.4378187e-6, \
@@ -52,23 +53,25 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=8, right=1, order=2, iwindow=True)
-
+        fd = SavitzkyGolay(left=3, right=0, order=1, iwindow=True)
+        
         resave = False
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
+            #data[:,VELOCITY_COMP] = signal.savgol_filter(data[:,POSITION], window_length=9, polyorder=2, deriv=1, delta=1/SAMPLING_FREQ)
             resave = True
         # Compute acceleration from velocity or velocity_comp
         if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1 or resave:
             data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME]*TIME_UNIT)
+            #data[:,ACCELERATION_COMP] = signal.savgol_filter(data[:,POSITION],window_length=9, polyorder=2, deriv=2, delta=1/SAMPLING_FREQ)
             resave = True
         
         # Save dataframe to csv if velocity or acceleration computed
         if resave:
             print("Resaving dataframe to csv")
-            df = pd.DataFrame(data, columns = self.df.columns.values, dtype=np.float32)
-            df.to_csv(self.path, index=False)
+            self.df = pd.DataFrame(data, columns = self.df.columns.values, dtype=np.float32)
+            self.df.to_csv(self.path, index=False)
 
     # plot dataset
     def plot_data(self):
@@ -78,7 +81,6 @@ class CSVDataset(Dataset):
         data[:,SETPOINT] -= math.pi
         data[:,POSITION] -= math.pi
         data[:,CURRENT] /= 1000
-        data[:,VELOCITY] /= 10
         data[:,VELOCITY_COMP] /= 10
         data[:,ACCELERATION_COMP] /= 1000
 
@@ -86,7 +88,6 @@ class CSVDataset(Dataset):
         #ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
         ax.plot(data[:,TIME],data[:,SETPOINT])
         ax.plot(data[:,TIME],data[:,POSITION])
-        ax.plot(data[:,TIME],data[:,VELOCITY])
         ax.plot(data[:,TIME],data[:,VELOCITY_COMP])
         ax.plot(data[:,TIME],data[:,ACCELERATION_COMP])
         ax.plot(data[:,TIME],data[:,CURRENT])
@@ -95,7 +96,6 @@ class CSVDataset(Dataset):
         ax.set_ylabel("Amplitude")
         ax.legend([ "Setpoint [rad]", \
                     "Posistion [rad]", \
-                    "Velocity [10rad/s]", \
                     "Derived Velocity [10rad/s]", \
                     "Derived Accleration [1000rad/s^2]", \
                     "Current [A]"])                        
@@ -278,7 +278,6 @@ def main():
     # Open measured data
     dir_path = os.path.dirname(os.path.realpath(__file__))
     list_of_files = glob.glob(dir_path + '/../data/*.csv')
-    cwd = os.getcwd()
     path = max(list_of_files, key=os.path.getctime)
     #path = '../data/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
