@@ -51,9 +51,8 @@ qtcreator-*
 CATKIN_IGNORE
 
 # Measured data
-data/*.csv
-data_flight/*.csv
-bags/*.bag
+data/experiments/*.csv
+data/input_signals/*.csv
 
 scripts/__pycache__/
 scripts/runs/
