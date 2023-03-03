@@ -4,7 +4,7 @@ input:
   frequency: 200
 
   type: 0     # 0: 'step' | 1: 'chirp'
-  centre_point: 3.1415926536
+  centre_point: 0
 
   # Params for random step input
   step:

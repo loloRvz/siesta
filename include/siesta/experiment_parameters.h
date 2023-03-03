@@ -11,7 +11,7 @@ namespace experiment_parameters {
     double INPUT_FREQ = 200;
     enum INPUT_TYPES {STEP,CHRP};
     int INPUT_TYPE = STEP; 
-    double INPUT_CENTRE_POINT = 3.1415926536;
+    double INPUT_CENTRE_POINT = 0;
 
     double STEP_FREQ = 5;
     double STEP_VARIANCE = 0.3;

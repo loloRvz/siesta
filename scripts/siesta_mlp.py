@@ -78,8 +78,6 @@ class CSVDataset(Dataset):
         data = self.df.to_numpy()
 
         # Make data a bit more readable - ignore units for now
-        data[:,SETPOINT] -= math.pi
-        data[:,POSITION] -= math.pi
         data[:,CURRENT] /= 1000
         data[:,VELOCITY_COMP] /= 10
         data[:,ACCELERATION_COMP] /= 1000

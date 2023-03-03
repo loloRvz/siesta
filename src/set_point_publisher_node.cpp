@@ -11,8 +11,8 @@ using namespace experiment_parameters;
 
 /*** Input generator functions ***/
 double rand_signal(double r){
-  r = r<0 ? 0 : r;              // Limit input range
-  r = r>2*M_PI ? 2*M_PI: r;
+  r = r<-M_PI ? -M_PI : r;              // Limit input range
+  r = r>M_PI ? M_PI: r;
   return r;
 }
 
