@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <random>
 #include <sstream>
 #include <fstream>
@@ -13,16 +14,21 @@ using namespace experiment_parameters;
 
 
 // Parse CSV function
-std::vector<std::vector<double>> parse_csv(std::string csv_path) {
+std::vector<std::vector<float>> parse_csv(std::string csv_path) {
 	std::ifstream  data(csv_path);
 	std::string line;
-	std::vector<std::vector<double>> parsedCsv;
+	std::vector<std::vector<float>> parsedCsv;
+
+	// Discard first line (column names)
+	std::getline(data,line);
+
+	// Read data line per line
 	while(std::getline(data,line)){
 		std::stringstream lineStream(line);
 		std::string cell;
-		std::vector<double> parsedRow;
+		std::vector<float> parsedRow;
 		while(std::getline(lineStream,cell,',')){
-			parsedRow.push_back(std::stod(cell));
+			parsedRow.push_back(std::stof(cell));
 		}
 		parsedCsv.push_back(parsedRow);
 	}
@@ -43,7 +49,9 @@ int main(int argc, char ** argv) {
 	load_params(nh);
 
 	// Get input signals from csv files
-	std::vector<std::vector<double>> input_signals = parse_csv("../data/input_signals/signals.csv");
+	std::string pkg_path = ros::package::getPath("siesta");
+	std::string csv_path = pkg_path + "/data/input_signals/signals.csv";
+	std::vector<std::vector<float>> input_signals = parse_csv(csv_path);
 	int input_idx = 0;
 
 	// Check for incorrect input type
@@ -57,9 +65,9 @@ int main(int argc, char ** argv) {
 	while(ros::ok()){
 
 		// Get input value
-		msg.data = input_signals[INPUT_TYPE][input_idx];
+		msg.data = input_signals[input_idx][INPUT_TYPE];
 		input_idx++;
-		if (input_idx >= (int) input_signals[0].size()) {
+		if (input_idx >= (int) input_signals.size()) {
 			input_idx = 0;
 		}
 

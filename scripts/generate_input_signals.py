@@ -16,7 +16,7 @@ READ_FREQ = 400     # [Hz]
 
 # Step input
 STEP_FREQ = 5       # [Hz]
-STEP_VAR = 0.1      # [Rad]
+STEP_VAR = 0.3      # [Rad]
 
 # Chirp input 
 CHRP_AMPL = 0.3     # [Rad]

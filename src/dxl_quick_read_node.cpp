@@ -71,6 +71,8 @@ int main(int argc, char ** argv) {
 		strcat(file_str,"-chrp");
 	}else if(INPUT_TYPE == FLIT){
 		strcat(file_str,"-flit");
+	}else if(INPUT_TYPE == MIXD){
+		strcat(file_str,"-mixd");
 	}
 	strcat(file_str,".csv");
 

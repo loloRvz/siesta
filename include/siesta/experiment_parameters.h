@@ -18,8 +18,8 @@ namespace experiment_parameters {
     /*** Load input signal parameters ***/
     void load_params(ros::NodeHandle nh){
         nh.getParam("/load_id",                   LOAD_ID);
-        nh.getParam("/input/frequency",           CTRL_FREQ);
-        nh.getParam("/input/type",                INPUT_TYPE);
+        nh.getParam("/control_frequency",           CTRL_FREQ);
+        nh.getParam("/input_type",                INPUT_TYPE);
     }
 
 }
