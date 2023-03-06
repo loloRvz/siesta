@@ -2,9 +2,10 @@ clc;
 clear all;
 close all;
 
-% Get latest created file
-d = dir('../data/*.csv');
-[~, index]   = max([d.datenum]);
+
+%% GET THE DATA %%
+d = dir('../data/experiments/*.csv');
+[~, index]   = max([d.datenum]); % Get latest created file
 dataset = readmatrix(fullfile(d(index).folder, d(index).name)); 
 % dataset = readmatrix('../data/23-02-28--13-24-40_L1-step.csv');
 
@@ -18,15 +19,15 @@ current = dataset(:,5);
 %% DERIVATIVE FILTER %%
 Fs = 400;
 Nf = 10; 
-Fpass = 10; 
-Fstop = 100;
+Fpass = 20; 
+Fstop = 150;
 
 d = designfilt('differentiatorfir', 'FilterOrder',Nf, ...
     'PassbandFrequency',Fpass, ...
     'StopbandFrequency',Fstop, ...
     'SampleRate',Fs);
 
-
+    
 %% COMPUTE DERIVATIVES %%
 dt = 1/Fs;
 delay = mean(grpdelay(d));
@@ -53,12 +54,12 @@ acc_d(1:delay) = [];
 %% PLOT %%
 figure(1)
 hold on
-plot(t,setpt - pi)
-plot(t,pos - pi)
+plot(t_old,setpt)
+plot(t,pos)
 plot(tt,vel_d/10)
 plot(ttt,acc_d/1000)
-plot(t,current/1000)
+plot(t_old,current/1000)
 yline(0,'k')
-xlabel('Time [ms]')
+xlabel('Time [s]')
 ylabel('Amplitude []')
 legend('Setpoint [rad]','Position [rad]','Velocity [10rad/s]','Acceleration[1000rad/s]','Current [A]')
