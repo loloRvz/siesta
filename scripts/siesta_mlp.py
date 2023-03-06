@@ -53,9 +53,9 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=3, right=0, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
         
-        resave = False
+        resave = True
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
@@ -277,7 +277,7 @@ def main():
     dir_path = os.path.dirname(os.path.realpath(__file__))
     list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
     path = max(list_of_files, key=os.path.getctime)
-    #path = '../data/2023-02-22--15-00-04_dataset.csv'
+    #path = '../data/experiments/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
     pos_hist_len = 5

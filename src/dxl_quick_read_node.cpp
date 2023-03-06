@@ -14,7 +14,7 @@
 
 using namespace experiment_parameters;
 
-#define POLLING_FREQ 400
+#define SAMPLING_FREQ 400
 
 // Setpoint topic callback
 class PositionSetter{
@@ -38,7 +38,7 @@ int main(int argc, char ** argv) {
 	ros::NodeHandle nh;
 	PositionSetter ps;
 	ros::Subscriber set_position_sub = nh.subscribe(setpoint_topic_, 1000, &PositionSetter::setPointCallback, &ps);
-	ros::Rate rate(POLLING_FREQ);
+	ros::Rate rate(SAMPLING_FREQ);
 
 	// Get experiment parameters
 	load_params(nh);
