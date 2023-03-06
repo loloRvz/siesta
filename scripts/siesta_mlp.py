@@ -275,7 +275,7 @@ def main():
 
     # Open measured data
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
     path = max(list_of_files, key=os.path.getctime)
     #path = '../data/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)

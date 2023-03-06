@@ -11,19 +11,9 @@
 
 using namespace experiment_parameters;
 
-/*** Input generator functions ***/
-double rand_signal(double r){
-	r = r<-M_PI ? -M_PI : r;              // Limit input range
-	r = r>M_PI ? M_PI: r;
-	return r;
-}
 
-double chirp_signal(double time){
-	time = std::fmod(time,CHRP_PERIOD);
-	return CHRP_AMPLITUDE*cos(CHRP_FREQ1*time+(CHRP_FREQ2-CHRP_FREQ1)*time*time/(2*CHRP_PERIOD)) + INPUT_CENTRE_POINT;
-}
-
-std::vector<std::vector<double>> parse_flight_data(std::string csv_path) {
+// Parse CSV function
+std::vector<std::vector<double>> parse_csv(std::string csv_path) {
 	std::ifstream  data(csv_path);
 	std::string line;
 	std::vector<std::vector<double>> parsedCsv;
@@ -39,11 +29,6 @@ std::vector<std::vector<double>> parse_flight_data(std::string csv_path) {
 	return parsedCsv;  
 }
 
-double flight_signal(std::vector<std::vector<std::string>> data, int index){
-	index %= data.size();
-	return data[2][index];
-}
-
 
 
 /*** MAIN ***/
@@ -57,39 +42,25 @@ int main(int argc, char ** argv) {
 	// Get experiment parameters
 	load_params(nh);
 
-	// RNG for random step input
-	std::default_random_engine generator;
-	std::normal_distribution<double> distribution(INPUT_CENTRE_POINT,sqrt(STEP_VARIANCE));
-	int count = 0;
+	// Get input signals from csv files
+	std::vector<std::vector<double>> input_signals = parse_csv("../data/input_signals/signals.csv");
+	int input_idx = 0;
 
-	// Open csv file for real data input
-	std::vector<std::vector<double>> flight_data = parse_flight_data(std::string csv_path);
-	int index = 0;
+	// Check for incorrect input type
+	if(INPUT_TYPE > N_INPUT_TYPES){
+		ROS_ERROR("Input type not valid. Exiting...");
+		return 0;
+	}
 
-	ros::Rate rate(INPUT_FREQ);
+	ros::Rate rate(CTRL_FREQ);
 	ROS_INFO("Publishing input...");
 	while(ros::ok()){
-		// Generate input depending on input type
-		switch(INPUT_TYPE){
 
-			case STEP:
-				if(count > INPUT_FREQ/STEP_FREQ){
-					msg.data = rand_signal(distribution(generator)); // Generate random variable with normal distribution
-					count = 0;
-				}else{count++;}
-				break;
-
-			case CHRP:
-				msg.data = chirp_signal(ros::Time::now().toSec()); // Generate chirp signal
-				break;
-
-			case FLIT:
-				msg.data = (flight_data,index); // Generate chirp signal
-				index++;
-				break;
-
-			default:
-				msg.data = -1;
+		// Get input value
+		msg.data = input_signals[INPUT_TYPE][input_idx];
+		input_idx++;
+		if (input_idx >= (int) input_signals[0].size()) {
+			input_idx = 0;
 		}
 
 		// Publish set point
