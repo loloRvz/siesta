@@ -28,6 +28,7 @@ from sklearn.metrics import mean_squared_error
 # Data columns
 TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP = range(7)
 
+# Experiment
 SAMPLING_FREQ = 400 # Hz
 TIME_UNIT = 0.001   # ms
 LOAD_INERTIAS = np.array([1, \
@@ -35,6 +36,8 @@ LOAD_INERTIAS = np.array([1, \
                           548.4378187e-6, \
                           287.7428055e-6])    #kg*m^2
 
+# Training
+HIST_LENGTH = 5
 
 ### CLASSES ###
 
@@ -53,9 +56,9 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=2, right=1, order=1, iwindow=True)
         
-        resave = True
+        resave = False
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
@@ -128,6 +131,9 @@ class CSVDataset(Dataset):
         self.y = data[:,VELOCITY_COMP]
         self.y = self.y[hist_length-1:] #Cut out t<0
 
+        # Get time for plotting later on
+        self.t =data[hist_length-1:,TIME]
+
     # get indexes for train and test rows
     def get_splits(self, n_test=0.1):
         # determine sizes
@@ -136,18 +142,11 @@ class CSVDataset(Dataset):
         print("Training size: ", train_size)
         print("Testing size: ", test_size)
 
-        test_range = range(train_size, train_size + test_size)
-
         # calculate the split
-        #train, test = random_split(self, [train_size, test_size])
-        train = Subset(self, range(train_size))
-        test = Subset(self, test_range)
-
-        train_dl = DataLoader(train, batch_size=32, shuffle=True,
-                    pin_memory=True)
-        test_dl = DataLoader(test, batch_size=1024, shuffle=False,
-                    pin_memory=True)
-        return train_dl, test_dl, test_range
+        train, test = random_split(self, [train_size, test_size])
+        train_dl = DataLoader(train, batch_size=32, shuffle=True, pin_memory=True)
+        test_dl = DataLoader(test, batch_size=1024, shuffle=False, pin_memory=True)
+        return train_dl, test_dl
 
     # number of rows in the dataset
     def __len__(self):
@@ -206,7 +205,7 @@ class MLP(Module):
 ### FUNCTIONS ###
 
 # train model
-def train_model(train_dl, model, dev, dt_string, lr):
+def train_model(train_dl, test_dl, model, dev, dt_string, lr):
     # define the optimization
     criterion = MSELoss()
     optimizer = SGD(model.parameters(), lr, momentum=0.9)
@@ -215,7 +214,6 @@ def train_model(train_dl, model, dev, dt_string, lr):
     epoch = 0
     try:
         while True:
-            print(epoch)
             meanLoss = 0
             steps = 0
             # enumerate mini batches
@@ -236,6 +234,7 @@ def train_model(train_dl, model, dev, dt_string, lr):
 
             meanLoss = meanLoss/steps
             writer.add_scalar('Loss/train', meanLoss, epoch)
+            print("Epoch: ", epoch)
             if epoch % 5000 == 0:
                 model_scripted = torch.jit.script(model)
                 model_scripted.save("../models/"+dt_string +
@@ -263,6 +262,34 @@ def evaluate_model(test_dl, model):
     mse = mean_squared_error(actuals, predictions)
     return mse, actuals, predictions
 
+def plot_model(dataset, model):
+    # Get full dataloader from set
+    full_dl = DataLoader(dataset, batch_size=1024, shuffle=False, pin_memory=True)
+
+    # Compute predictions
+    predictions, actuals = list(), list()
+    for i, (inputs, targets) in enumerate(full_dl):
+        yhat = model(inputs)
+        yhat = yhat.detach().cpu().numpy()
+        actual = targets.cpu().numpy()
+        actual = actual.reshape((len(actual), 1))
+        predictions.append(yhat)
+        actuals.append(actual)
+    predictions, actuals = np.vstack(predictions), np.vstack(actuals)
+
+    # Plot validation dataset to time
+    data = dataset.df.to_numpy()
+    fig,ax=plt.subplots()
+    ax.plot(dataset.t,dataset.X[:,0])
+    #ax.plot(dataset.t,data[:,POSITION])
+    ax.plot(dataset.t,np.squeeze(actuals)/10)
+    ax.plot(dataset.t,np.squeeze(predictions)/10)
+    ax.set_xlabel("Time [ms]")
+    ax.set_ylabel("Amplitude")
+    ax.legend(["Position error [rad]","Derived velocity [10rad/s]","Predicted velocities [10rad/s]"])
+    plt.title("Model Validation")
+    plt.show()
+
 
 ### SCRIPT ###
 def main():
@@ -280,34 +307,22 @@ def main():
     #path = '../data/experiments/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
-    pos_hist_len = 5
-
     # Prepare dataset
     dataset = CSVDataset(path)
     dataset.preprocess()
     #dataset.plot_data()
-    dataset.prepare_data(hist_length=pos_hist_len)
-    train_dl, test_dl, test_range = dataset.get_splits() # Get data loaders
+    dataset.prepare_data(hist_length=HIST_LENGTH)
+    train_dl, test_dl = dataset.get_splits() # Get data loaders
 
-    # Network training
+    # Train model
     os.makedirs("../models/"+os.path.basename(path), exist_ok=True)
-
-    model = MLP(pos_hist_len, 1, dev, 32)
-    train_model(train_dl, model, dev, os.path.basename(path), lr=0.01)   # train the model
-    mse, true_vals, est_vals = evaluate_model(test_dl, model) # evaluate the model
+    model = MLP(HIST_LENGTH, 1, dev, 32)
+    train_model(train_dl, test_dl, model, dev, os.path.basename(path), lr=0.01)
+    # Evaluate model
+    mse, true_vals, est_vals = evaluate_model(test_dl, model)
     print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
+    plot_model(dataset, model)
 
-    # Plot validation dataset to time
-    fig,ax=plt.subplots()
-    ax.plot(dataset.df.to_numpy()[test_range,TIME], \
-        np.column_stack((test_dl.dataset[:][0][:,0], \
-        np.squeeze(true_vals)/10, \
-        np.squeeze(est_vals)/10)))
-    ax.set_xlabel("Time [ms]")
-    ax.set_ylabel("Amplitude")
-    ax.legend(["Position error [rad]","Derived velocity [10rad/s]","Predicted velocities [10rad/s]"])
-    plt.title("Model Validation")
-    plt.show()
 
 
 if __name__ == "__main__":
