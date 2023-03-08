@@ -197,7 +197,7 @@ class MLP(Module):
 ### FUNCTIONS ###
 
 # train model
-def train_model(train_dl, test_dl, model, dev, dt_string, lr):
+def train_model(train_dl, test_dl, model, dev, model_dir, lr):
     # define the optimization
     criterion = MSELoss()
     optimizer = SGD(model.parameters(), lr, momentum=0.9)
@@ -243,11 +243,10 @@ def train_model(train_dl, test_dl, model, dev, dt_string, lr):
             meanLossTest = meanLossTest/stepsTest
             writer.add_scalar('Loss/test', meanLossTest, epoch)
 
-            if epoch % 100 == 0:
+            if epoch % 100 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
-                model_scripted.save("../data/models/"+dt_string +
-                                    "/delta_"+str(epoch)+".pt")
+                model_scripted.save(model_dir +  "/delta_" + str(epoch) + ".pt")
             #if epoch>= 100: break
             epoch = epoch + 1
     except KeyboardInterrupt:
@@ -313,7 +312,8 @@ def main():
     # Open measured data
     dir_path = os.path.dirname(os.path.realpath(__file__))
     list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
-    path = max(list_of_files, key=os.path.getctime)
+    path = list_of_files[3]
+    #path = max(list_of_files, key=os.path.getctime)
     #path = '../data/experiments/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
@@ -325,9 +325,11 @@ def main():
     train_dl, test_dl = dataset.get_splits() # Get data loaders
 
     # Train model
-    os.makedirs("../data/models/"+os.path.basename(path), exist_ok=True)
+    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(HIST_LENGTH)
+    print(model_dir)
+    os.makedirs(model_dir, exist_ok=True)
     model = MLP(HIST_LENGTH, 1, dev, 32)
-    train_model(train_dl, test_dl, model, dev, os.path.basename(path), lr=0.01)
+    train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
     # Evaluate model
     mse = evaluate_model(test_dl, model)
     print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
