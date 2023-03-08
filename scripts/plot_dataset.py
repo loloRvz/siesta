@@ -10,7 +10,7 @@ def main():
     dir_path = os.path.dirname(os.path.realpath(__file__))
     list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
     path = max(list_of_files, key=os.path.getctime)
-    #path = '../data/experiments/23-02-28--13-24-40_L1-step.csv'
+    #path = '../data/flight_data/23-02-08--15-54-58_ID2.csv'
     print("Opening: ",path)
 
     # Prepare & plot dataset

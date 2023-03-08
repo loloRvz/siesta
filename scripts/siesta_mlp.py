@@ -37,7 +37,7 @@ LOAD_INERTIAS = np.array([1, \
                           287.7428055e-6])    #kg*m^2
 
 # Training
-HIST_LENGTH = 5
+HIST_LENGTH = 10
 
 ### CLASSES ###
 
@@ -56,7 +56,7 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=2, right=1, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=5, right=5, order=1, iwindow=True)
         
         resave = False
         # Compute velocity from position 
@@ -72,7 +72,7 @@ class CSVDataset(Dataset):
         
         # Save dataframe to csv if velocity or acceleration computed
         if resave:
-            print("Resaving dataframe to csv")
+            print("Computed derivatives. Resaving dataframe to csv...")
             self.df = pd.DataFrame(data, columns = self.df.columns.values, dtype=np.float32)
             self.df.to_csv(self.path, index=False)
 
@@ -127,8 +127,7 @@ class CSVDataset(Dataset):
 
         # Compute torque depending on load inertia (declared in filename)
         load_id = int(os.path.basename(self.path)[20])
-        #self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id]
-        self.y = data[:,VELOCITY_COMP]
+        self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id]
         self.y = self.y[hist_length-1:] #Cut out t<0
 
         # Get time for plotting later on
@@ -214,6 +213,7 @@ def train_model(train_dl, test_dl, model, dev, dt_string, lr):
     epoch = 0
     try:
         while True:
+            # Compute loss and gradient on train dataset
             meanLoss = 0
             steps = 0
             # enumerate mini batches
@@ -232,8 +232,24 @@ def train_model(train_dl, test_dl, model, dev, dt_string, lr):
                 meanLoss = meanLoss + loss
                 steps = steps + 1
 
+            # Compute loss on test dataset
+            meanLossTest = 0
+            stepsTest = 0
+            for i, (inputs, targets) in enumerate(test_dl):
+                inputs, targets = inputs.to(dev), targets.to(dev).unsqueeze(1).float()
+                # compute the model output
+                yhat = model(inputs)
+                # calculate loss
+                loss = criterion(yhat, targets)
+                meanLossTest = meanLossTest + loss
+                stepsTest = stepsTest + 1
+
             meanLoss = meanLoss/steps
             writer.add_scalar('Loss/train', meanLoss, epoch)
+
+            meanLossTest = meanLossTest/stepsTest
+            writer.add_scalar('Loss/test', meanLossTest, epoch)
+
             print("Epoch: ", epoch)
             if epoch % 5000 == 0:
                 model_scripted = torch.jit.script(model)
@@ -262,6 +278,7 @@ def evaluate_model(test_dl, model):
     mse = mean_squared_error(actuals, predictions)
     return mse, actuals, predictions
 
+# plot predictions
 def plot_model(dataset, model):
     # Get full dataloader from set
     full_dl = DataLoader(dataset, batch_size=1024, shuffle=False, pin_memory=True)
@@ -282,11 +299,11 @@ def plot_model(dataset, model):
     fig,ax=plt.subplots()
     ax.plot(dataset.t,dataset.X[:,0])
     #ax.plot(dataset.t,data[:,POSITION])
-    ax.plot(dataset.t,np.squeeze(actuals)/10)
-    ax.plot(dataset.t,np.squeeze(predictions)/10)
+    ax.plot(dataset.t,np.squeeze(actuals))
+    ax.plot(dataset.t,np.squeeze(predictions))
     ax.set_xlabel("Time [ms]")
     ax.set_ylabel("Amplitude")
-    ax.legend(["Position error [rad]","Derived velocity [10rad/s]","Predicted velocities [10rad/s]"])
+    ax.legend(["Position error [rad]","Derived torque [Nm]","Predicted torque [Nm]"])
     plt.title("Model Validation")
     plt.show()
 
