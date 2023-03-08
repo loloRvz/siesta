@@ -28,7 +28,7 @@ from sklearn.metrics import mean_squared_error
 # Data columns
 TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP = range(7)
 
-# Experiment
+# Experiment Parameters
 SAMPLING_FREQ = 400 # Hz
 TIME_UNIT = 0.001   # ms
 LOAD_INERTIAS = np.array([1, \
@@ -36,8 +36,8 @@ LOAD_INERTIAS = np.array([1, \
                           548.4378187e-6, \
                           287.7428055e-6])    #kg*m^2
 
-# Training
-HIST_LENGTH = 10
+# Training Parameters
+HIST_LENGTH = 5
 
 ### CLASSES ###
 
@@ -269,10 +269,10 @@ def evaluate_model(test_dl, model):
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
     # calculate mse
     mse = mean_squared_error(actuals, predictions)
-    return mse, actuals, predictions
+    return mse
 
 # plot predictions
-def plot_model(dataset, model):
+def plot_model_predictions(dataset, model):
     # Get full dataloader from set
     full_dl = DataLoader(dataset, batch_size=1024, shuffle=False, pin_memory=True)
 
@@ -329,9 +329,9 @@ def main():
     model = MLP(HIST_LENGTH, 1, dev, 32)
     train_model(train_dl, test_dl, model, dev, os.path.basename(path), lr=0.01)
     # Evaluate model
-    mse, true_vals, est_vals = evaluate_model(test_dl, model)
+    mse = evaluate_model(test_dl, model)
     print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
-    plot_model(dataset, model)
+    plot_model_predictions(dataset, model)
 
 
 
