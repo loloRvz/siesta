@@ -251,7 +251,7 @@ def train_model(train_dl, test_dl, model, dev, dt_string, lr):
             writer.add_scalar('Loss/test', meanLossTest, epoch)
 
             print("Epoch: ", epoch)
-            if epoch % 5000 == 0:
+            if epoch % 50 == 0:
                 model_scripted = torch.jit.script(model)
                 model_scripted.save("../models/"+dt_string +
                                     "/delta_"+str(epoch)+".pt")
