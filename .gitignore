@@ -51,7 +51,7 @@ qtcreator-*
 CATKIN_IGNORE
 
 # Measured data
-data/experiments/*.csv
+# data/experiments/*.csv
 data/input_signals/*.csv
 data/flight_data/*.csv
 data/models/*

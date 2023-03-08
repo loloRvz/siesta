@@ -56,7 +56,7 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=5, right=5, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=2, right=1, order=1, iwindow=True)
         
         resave = False
         # Compute velocity from position 
@@ -166,20 +166,16 @@ class MLP(Module):
         xavier_uniform_(self.hidden1.weight).to(self.dev)
         self.act1 = Softsign().to(self.dev)
         # second hidden layer
-        self.hidden2 = Linear(layerDim, int(layerDim/2)).to(self.dev)
+        self.hidden2 = Linear(layerDim, layerDim).to(self.dev)
         xavier_uniform_(self.hidden2.weight).to(self.dev)
         self.act2 = Softsign().to(self.dev)
         # third hidden layer
-        self.hidden3 = Linear(int(layerDim/2), int(layerDim/2)).to(self.dev)
+        self.hidden3 = Linear(layerDim, layerDim).to(self.dev)
         xavier_uniform_(self.hidden3.weight).to(self.dev)
         self.act3 = Softsign().to(self.dev)
-        # fourth hidden layer
-        self.hidden4 = Linear(int(layerDim/2), int(layerDim/2)).to(self.dev)
+        # output
+        self.hidden4 = Linear(layerDim, n_outputs).to(self.dev)
         xavier_uniform_(self.hidden4.weight).to(self.dev)
-        self.act4 = Softsign().to(self.dev)
-        # fifth hidden layer and output
-        self.hidden5 = Linear(int(layerDim/2), n_outputs).to(self.dev)
-        xavier_uniform_(self.hidden5.weight).to(self.dev)
 
     # forward propagate input
     def forward(self, X):
@@ -193,11 +189,8 @@ class MLP(Module):
         # third hidden layer
         X = self.hidden3(X)
         X = self.act3(X)
-        # fourth hidden layer
-        X = self.hidden4(X)
-        X = self.act4(X)
         # fifth hidden layer and output
-        X = self.hidden5(X)
+        X = self.hidden4(X)
         return X
 
 
@@ -250,10 +243,10 @@ def train_model(train_dl, test_dl, model, dev, dt_string, lr):
             meanLossTest = meanLossTest/stepsTest
             writer.add_scalar('Loss/test', meanLossTest, epoch)
 
-            print("Epoch: ", epoch)
-            if epoch % 50 == 0:
+            if epoch % 100 == 0:
+                print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
-                model_scripted.save("../models/"+dt_string +
+                model_scripted.save("../data/models/"+dt_string +
                                     "/delta_"+str(epoch)+".pt")
             #if epoch>= 100: break
             epoch = epoch + 1
@@ -332,7 +325,7 @@ def main():
     train_dl, test_dl = dataset.get_splits() # Get data loaders
 
     # Train model
-    os.makedirs("../models/"+os.path.basename(path), exist_ok=True)
+    os.makedirs("../data/models/"+os.path.basename(path), exist_ok=True)
     model = MLP(HIST_LENGTH, 1, dev, 32)
     train_model(train_dl, test_dl, model, dev, os.path.basename(path), lr=0.01)
     # Evaluate model
