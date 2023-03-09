@@ -266,6 +266,7 @@ def evaluate_model(test_dl, model):
         predictions.append(yhat)
         actuals.append(actual)
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
+    #predictions = np.zeros(predictions.shape)
     # calculate mse
     mse = mean_squared_error(actuals, predictions)
     return mse
