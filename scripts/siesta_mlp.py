@@ -127,6 +127,8 @@ class CSVDataset(Dataset):
 
         # Compute torque depending on load inertia (declared in filename)
         load_id = int(os.path.basename(self.path)[20])
+        print("load_id: ", load_id)
+        print("intertia: ", LOAD_INERTIAS[load_id])
         self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id]
         self.y = self.y[hist_length-1:] #Cut out t<0
 
@@ -313,7 +315,9 @@ def main():
     # Open measured data
     dir_path = os.path.dirname(os.path.realpath(__file__))
     list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
-    path = list_of_files[3]
+    list_of_files = sorted(list_of_files)
+    list_of_files.reverse()
+    path = list_of_files[0]
     #path = max(list_of_files, key=os.path.getctime)
     #path = '../data/experiments/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)

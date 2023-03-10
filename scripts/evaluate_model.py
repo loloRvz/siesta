@@ -15,7 +15,9 @@ def main():
 
     # Open measured data
     list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
-    # path = max(list_of_files, key=os.path.getctime)
+    list_of_files = sorted(list_of_files)
+    list_of_files.reverse()
+
     for path in list_of_files:
         print("Opening: ",path)    
         dataset = CSVDataset(path)

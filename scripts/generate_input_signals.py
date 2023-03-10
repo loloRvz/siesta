@@ -19,10 +19,10 @@ STEP_FREQ = 5       # [Hz]
 STEP_VAR = 0.3      # [Rad]
 
 # Chirp input 
-CHRP_AMPL = 0.3     # [Rad]
-CHRP_FREQ1 = 1     # [Hz]
-CHRP_FREQ2 = 40     # [Hz]
-CHRP_PERIOD = 2     # [s]
+CHRP_AMPL = 0.3               # [Rad]
+CHRP_FREQ1 = 0.05 *2*math.pi   # [Rad/s]
+CHRP_FREQ2 =   40 *2*math.pi   # [Rad/s]
+CHRP_PERIOD = 5               # [s]
 
 # Flight data input
 FLIT_FILE = "23-02-08--21-26-11_ID5.csv"
