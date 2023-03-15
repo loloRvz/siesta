@@ -10,7 +10,7 @@ namespace experiment_parameters {
 
     double CTRL_FREQ = 200;
     
-    enum INPUT_TYPES {STEP,CHRP,FLIT,MIXD, N_INPUT_TYPES};
+    enum INPUT_TYPES {STEP,CHRP,FLIT,MIXD,NOIS, N_INPUT_TYPES};
     int INPUT_TYPE = STEP; 
 
     const std::string setpoint_topic_ = "set_position";

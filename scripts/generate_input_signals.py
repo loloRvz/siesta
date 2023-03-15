@@ -77,8 +77,11 @@ def main():
                 arr[:,i] = np.resize( inputs_array[n+i*seg_size:n+(i+1)*seg_size,i] , arr[:,i].shape )
         mixd_np[n:n+3*seg_size] = np.resize( np.transpose(arr).reshape((1,-1)), mixd_np[n:n+3*seg_size].shape )
         n = n + 3*seg_size
-
     df["mixd"] = pd.DataFrame(mixd_np, columns =  ['mixd'])
+
+    # Compute white noise input type
+    nois_np = np.random.rand(DATA_LENGTH*CTRL_FREQ) * 2*math.pi - math.pi
+    df["nois"] = pd.DataFrame(nois_np, columns =  ['nois'])
 
     print("Computed inputs:")
     print(df)
