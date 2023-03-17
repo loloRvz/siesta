@@ -74,7 +74,7 @@ int main(int argc, char ** argv) {
 	}else if(INPUT_TYPE == MIXD){
 		strcat(file_str,"-mixd");
 	}else if(INPUT_TYPE == NOIS){
-		strcat(file_str,"-mixd");
+		strcat(file_str,"-nois");
 	}
 	strcat(file_str,".csv");
 

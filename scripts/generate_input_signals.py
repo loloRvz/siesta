@@ -19,9 +19,9 @@ STEP_FREQ = 5       # [Hz]
 STEP_VAR = 0.3      # [Rad]
 
 # Chirp input 
-CHRP_AMPL = 0.3               # [Rad]
+CHRP_AMPL = 0.1               # [Rad]
 CHRP_FREQ1 = 0.05 *2*math.pi   # [Rad/s]
-CHRP_FREQ2 =   40 *2*math.pi   # [Rad/s]
+CHRP_FREQ2 =   30 *2*math.pi   # [Rad/s]
 CHRP_PERIOD = 5               # [s]
 
 # Flight data input
@@ -29,6 +29,9 @@ FLIT_FILE = "23-02-08--21-26-11_ID5.csv"
 
 # Mixed input containing all types of data input
 MIXD_INTERVAL = 5  # [s]
+
+# White noise input params
+NOIS_VARIANCE = 0.1  # [s]
 
 # Enum
 STEP_IDX, CHRP_IDX, FLIT_IDX, MIXD_IDX = range(4)
@@ -80,7 +83,7 @@ def main():
     df["mixd"] = pd.DataFrame(mixd_np, columns =  ['mixd'])
 
     # Compute white noise input type
-    nois_np = np.random.rand(DATA_LENGTH*CTRL_FREQ) * 2*math.pi - math.pi
+    nois_np = np.random.rand(DATA_LENGTH*CTRL_FREQ) * 2*NOIS_VARIANCE - NOIS_VARIANCE
     df["nois"] = pd.DataFrame(nois_np, columns =  ['nois'])
 
     print("Computed inputs:")
