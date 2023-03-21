@@ -34,7 +34,9 @@ TIME_UNIT = 0.001   # ms
 LOAD_INERTIAS = np.array([1, \
                           224.5440144e-6, \
                           548.4378187e-6, \
-                          287.7428055e-6])    #kg*m^2
+                          287.7428055e-6, \
+                          1, 1, 1, 1, 1, 
+                          287e-6])    #kg*m^2
 
 # Training Parameters
 HIST_LENGTH = 5
@@ -56,7 +58,7 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=2, right=1, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
         
         resave = False
         # Compute velocity from position 
@@ -127,8 +129,6 @@ class CSVDataset(Dataset):
 
         # Compute torque depending on load inertia (declared in filename)
         load_id = int(os.path.basename(self.path)[20])
-        print("load_id: ", load_id)
-        print("intertia: ", LOAD_INERTIAS[load_id])
         self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id]
         self.y = self.y[hist_length-1:] #Cut out t<0
 
@@ -244,12 +244,15 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
 
             meanLossTest = meanLossTest/stepsTest
             writer.add_scalar('Loss/test', meanLossTest, epoch)
-
+            
+            if epoch % 10 == 0 and epoch != 0:
+                print("Epoch: ", epoch)
             if epoch % 100 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
                 model_scripted.save(model_dir +  "/delta_" + str(epoch) + ".pt")
-            #if epoch>= 100: break
+            if epoch >= 300:
+                break
             epoch = epoch + 1
     except KeyboardInterrupt:
         print('interrupted!')
@@ -288,6 +291,7 @@ def plot_model_predictions(dataset, model):
         predictions.append(yhat)
         actuals.append(actual)
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
+    #predictions = np.zeros(predictions.shape)
 
     # Plot validation dataset to time
     data = dataset.df.to_numpy()
@@ -317,28 +321,29 @@ def main():
     list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[0]
+    path = list_of_files[1]
     #path = max(list_of_files, key=os.path.getctime)
     #path = '../data/experiments/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
-    # Prepare dataset
-    dataset = CSVDataset(path)
-    dataset.preprocess()
-    #dataset.plot_data()
-    dataset.prepare_data(hist_length=HIST_LENGTH)
-    train_dl, test_dl = dataset.get_splits() # Get data loaders
+    for h in range(1,15):
+        # Prepare dataset
+        dataset = CSVDataset(path)
+        dataset.preprocess()
+        #dataset.plot_data()
+        dataset.prepare_data(hist_length=h)
+        train_dl, test_dl = dataset.get_splits() # Get data loaders
 
-    # Train model
-    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(HIST_LENGTH)
-    print(model_dir)
-    os.makedirs(model_dir, exist_ok=True)
-    model = MLP(HIST_LENGTH, 1, dev, 32)
-    train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
-    # Evaluate model
-    mse = evaluate_model(test_dl, model)
-    print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
-    plot_model_predictions(dataset, model)
+        # Train model
+        model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h)
+        print(model_dir)
+        os.makedirs(model_dir, exist_ok=True)
+        model = MLP(h, 1, dev, 32)
+        train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
+        # Evaluate model
+        mse = evaluate_model(test_dl, model)
+        print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
+        #plot_model_predictions(dataset, model)
 
 
 
