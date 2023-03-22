@@ -58,7 +58,8 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=2, right=1, order=1, iwindow=True)
+        #fd = SavitzkyGolay(left=0.0035, right=0.0035, order=1, iwindow=False)
         
         resave = False
         # Compute velocity from position 

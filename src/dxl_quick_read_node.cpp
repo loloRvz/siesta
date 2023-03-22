@@ -14,7 +14,6 @@
 
 using namespace experiment_parameters;
 
-#define SAMPLING_FREQ 400
 
 // Setpoint topic callback
 class PositionSetter{
@@ -36,12 +35,12 @@ int main(int argc, char ** argv) {
 	// Init rosnode and subscribe to setpoint topic with callback to position setter
 	ros::init(argc, argv, "dxl_quick_read_node");
 	ros::NodeHandle nh;
+	load_params(nh); // Get experiment parameters
 	PositionSetter ps;
 	ros::Subscriber set_position_sub = nh.subscribe(setpoint_topic_, 1000, &PositionSetter::setPointCallback, &ps);
-	ros::Rate rate(SAMPLING_FREQ);
+	ros::Rate rate(SMPL_FREQ);
 
-	// Get experiment parameters
-	load_params(nh);
+	
 
 	// Declare motors & interfaces
 	std::array<int, 1> dynamixels = {DXL1_ID};
@@ -62,7 +61,7 @@ int main(int argc, char ** argv) {
 	curr_tm = localtime(&curr_time);
 	strftime(time_str, 100, "%y-%m-%d--%H-%M-%S_", curr_tm);
 	strcat(file_str,time_str);  // Add date & time
-	sprintf(exprmt_descr_str, "L%d",LOAD_ID);
+	sprintf(exprmt_descr_str, "%dHz-L%d",SMPL_FREQ,LOAD_ID);
 	strcat(file_str,exprmt_descr_str); //Add load id
 	//Add input type
 	if(INPUT_TYPE == STEP){
