@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # General
 DATA_LENGTH = 120   # [s]
 CTRL_FREQ = 200     # [Hz]
-READ_FREQ = 400     # [Hz]
+READ_FREQ = 800     # [Hz]
 
 # Step input
 STEP_FREQ = 5       # [Hz]

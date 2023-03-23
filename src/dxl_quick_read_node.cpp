@@ -80,7 +80,14 @@ int main(int argc, char ** argv) {
 	// Open file to write data
 	std::ofstream myfile;
 	myfile.open(file_str);
-	myfile << "time[ms],setpoint[rad],position[rad],velocity[rad/s],current[mA],velocity_computed[rad/s],acceleration_computed[rad/s^2]\n"; // Set column descriptions
+	myfile << "time[ms],"
+			  "setpoint[rad],"
+			  "position[rad],"
+			  "velocity[rad/s],"
+			  "current[mA],"
+			  "velocity_computed[rad/s],"
+			  "acceleration_computed[rad/s^2]"
+			  "velocity_integrated[rad/s] \n"; // Set column descriptions
 
 	// Time variables
 	time_point t_now = std::chrono::system_clock::now();
@@ -100,12 +107,13 @@ int main(int argc, char ** argv) {
 		readBackStatus = ta_adapter.read();
 
 		// Write data to csv file
-		sprintf(data_str, "%010.3f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f\n",
+		sprintf(data_str, "%010.3f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f,%03.3f\n",
 			duration_cast<microseconds>(t_now - t_start).count()/1000.0,
 			readBackStatus[0].setpoint - M_PI, 
 			readBackStatus[0].position - M_PI, 
 			readBackStatus[0].velocity,
 			readBackStatus[0].current,
+			NAN,
 			NAN,
 			NAN);
 		myfile << data_str;
