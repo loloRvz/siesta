@@ -12,12 +12,12 @@ def main():
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
 
-    time_s = 5000
-    time_e = 5200
+    time_s = 2600
+    time_e = 2800
 
     fig,ax=plt.subplots()
 
-    for set in range(0,4):
+    for set in range(0,5):
         path = list_of_files[set]
         print("Opening: ",path)
 
@@ -28,19 +28,19 @@ def main():
 
         time_range = np.squeeze(np.where(np.logical_and(data[:,TIME]>=time_s, data[:,TIME]<=time_e)))
 
-        delay = np.squeeze(np.where(data[time_range,SETPOINT] > -0))[0]
+        delay = np.squeeze(np.where(data[time_range,SETPOINT] > 0))[0]
 
         times = data[:,TIME]
-        currents = np.roll(data[:,CURRENT],-delay + 10)
+        values = np.roll(data[:,CURRENT],-delay + 10)
 
         # print(data[time_range,CURRENT])
-        ax.plot(times,currents)
+        ax.plot(times,values)
 
 
     ax.axhline(y=0, color='k')
     ax.set_xlabel("Time [ms]")
     ax.set_ylabel("Current[A]")
-    ax.legend(["no load","224.5e-6 kg*m²","548.4e-6 kg*m²","772.9 e-6 kg*m²"])                        
+    ax.legend(["no load","224.5e-6 kg*m²","548.4e-6 kg*m²","772.9 e-6 kg*m²","drone arm"])                        
     plt.title("Motor data reading @800Hz")
     plt.show()
 

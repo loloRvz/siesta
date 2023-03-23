@@ -30,12 +30,14 @@ TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP, V
 # Experiment Parameters
 SMPL_FREQ = 800 # Hz
 TIME_UNIT = 0.001   # ms
-LOAD_INERTIAS = np.array([1, \
+LOAD_INERTIAS = np.array([2, \
                           224.5440144e-6, \
                           548.4378187e-6, \
                           287.7428055e-6, \
-                          1, 1, 1, 1, 1, 
+                          548.4378187e-6+224.5440144e-6, \
+                          1, 1, 1, 1, 
                           287e-6])    #kg*m^2
+K_TI = 1 # T = K_TI * I
 
 # Training Parameters
 HIST_LENGTH = 5
@@ -48,6 +50,7 @@ class CSVDataset(Dataset):
     def __init__(self, path):
         # load the csv file as a dataframe
         self.path = path
+        self.load_id = load_id = int(os.path.basename(self.path)[26])
         self.df = pd.read_csv(path)
         self.X = np.empty([1,1]).astype('float32')
         self.y = np.empty([1]).astype('float32')
@@ -59,26 +62,41 @@ class CSVDataset(Dataset):
         # Compute position derivatives if necessary
         #fd = SavitzkyGolay(left=2, right=1, order=1, iwindow=True)
         fd = SavitzkyGolay(left=0.0035, right=0.0035, order=1, iwindow=False)
-        
-        resave = True
+
+        resave = False
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
             resave = True
+
         # Compute acceleration from velocity or velocity_comp
         if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1 or resave:
             data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME]*TIME_UNIT)
             resave = True
+
+        # Integrate current (torque) to get velocity
         if np.sum(np.isnan(data[:,VELOCITY_INT])) > 1 or resave:
+            # Get average of two neighbouring elements
             curr_avs = data[:,CURRENT] + np.roll(data[:,CURRENT],1)
             curr_avs = curr_avs[1:] * 0.5
 
+            # Compute integral
             data[0,VELOCITY_INT] = 0
-            data[1:,VELOCITY_INT] = np.multiply(np.diff(data[:,TIME]),curr_avs)*TIME_UNIT
-
-            tp = toeplitz(np.zeros(160),data[:,VELOCITY_INT])
-
+            data[1:,VELOCITY_INT] = np.multiply(np.diff(data[:,TIME]*TIME_UNIT),curr_avs)
+            tp = toeplitz(np.zeros(len(data[:,VELOCITY_INT])),data[:,VELOCITY_INT])
             data[:,VELOCITY_INT] = np.sum(tp, axis=0)
+
+            epsilon = 0.1
+            # Correct drift
+            for i,v in np.ndenumerate(data[:,VELOCITY_COMP]):
+                if v <= epsilon and v >= -epsilon:
+                    data[(i[0]+1):,VELOCITY_INT] -= data[i,VELOCITY_INT]
+
+            # Mutliply with constants
+            if self.load_id == 0:
+                    data[:,VELOCITY_INT] *= K_TI / (LOAD_INERTIAS[self.load_id])
+            else:
+                data[:,VELOCITY_INT] *= K_TI / (LOAD_INERTIAS[0]+LOAD_INERTIAS[self.load_id])
 
             resave = True
         
@@ -141,8 +159,7 @@ class CSVDataset(Dataset):
         self.X = self.X[hist_length-1:,:] #Cut out t<0
 
         # Compute torque depending on load inertia (declared in filename)
-        load_id = int(os.path.basename(self.path)[20])
-        self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[load_id]
+        self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[self.load_id]
         self.y = self.y[hist_length-1:] #Cut out t<0
 
         # Get time for plotting later on

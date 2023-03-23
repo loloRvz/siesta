@@ -1,4 +1,4 @@
-load_id : 4                 # Choose Load '1','2','3', or '0' for no load
+load_id : 2                 # Choose Load '1','2','3', or '0' for no load. Load '4' for loads 1 & 2 stacked
 
 
 control_frequency: 200      # Frequency of input signal to motor (should be 200 Hz)

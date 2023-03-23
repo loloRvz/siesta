@@ -86,7 +86,7 @@ int main(int argc, char ** argv) {
 			  "velocity[rad/s],"
 			  "current[mA],"
 			  "velocity_computed[rad/s],"
-			  "acceleration_computed[rad/s^2]"
+			  "acceleration_computed[rad/s^2],"
 			  "velocity_integrated[rad/s] \n"; // Set column descriptions
 
 	// Time variables
