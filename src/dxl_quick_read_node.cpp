@@ -80,7 +80,7 @@ int main(int argc, char ** argv) {
 	// Open file to write data
 	std::ofstream myfile;
 	myfile.open(file_str);
-	myfile << "time[ms],"
+	myfile << "time[s],"
 			  "setpoint[rad],"
 			  "position[rad],"
 			  "velocity[rad/s],"
@@ -107,8 +107,8 @@ int main(int argc, char ** argv) {
 		readBackStatus = ta_adapter.read();
 
 		// Write data to csv file
-		sprintf(data_str, "%010.3f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f,%03.3f\n",
-			duration_cast<microseconds>(t_now - t_start).count()/1000.0,
+		sprintf(data_str, "%10.6f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f,%03.3f\n",
+			duration_cast<microseconds>(t_now - t_start).count()/1e6,
 			readBackStatus[0].setpoint - M_PI, 
 			readBackStatus[0].position - M_PI, 
 			readBackStatus[0].velocity,

@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import os, glob
 
 from derivative import SavitzkyGolay
+from scipy.integrate import odeint, solve_ivp
+from scipy.interpolate import interp1d
 from scipy import integrate
 from scipy.linalg import toeplitz
 
@@ -29,18 +31,34 @@ TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP, V
 
 # Experiment Parameters
 SMPL_FREQ = 800 # Hz
-TIME_UNIT = 0.001   # ms
-LOAD_INERTIAS = np.array([2, \
-                          224.5440144e-6, \
-                          548.4378187e-6, \
-                          287.7428055e-6, \
-                          548.4378187e-6+224.5440144e-6, \
+
+LOAD_INERTIAS = np.array([1.7e-3, \
+                          1.7e-3 + 224.5440144e-6, \
+                          1.7e-3 + 548.4378187e-6, \
+                          1.7e-3 + 287.7428055e-6, \
+                          1.7e-3 + 548.4378187e-6 + 224.5440144e-6, \
                           1, 1, 1, 1, 
-                          287e-6])    #kg*m^2
+                          1.7e-3 + 287e-6])    #kg*m^2
+
+
+MOTOR_FRICTIONS = np.array([5e-3, \
+                            5e-3, \
+                            5e-3, \
+                            5e-3, \
+                            5e-3, \
+                            1, 1, 1, 1, 
+                            20e-3])    #kg*m^2/s
+
 K_TI = 1 # T = K_TI * I
 
-# Training Parameters
-HIST_LENGTH = 5
+
+def ode_func(t,w,data,k,J,b):
+    print("t_now: ",t)
+    i_t = interp1d(data[:,TIME], data[:,CURRENT]/1000)
+    # compute acceleration
+    dwdt = k/J * i_t(t) - b/J * w
+    return dwdt
+
 
 ### CLASSES ###
 
@@ -66,38 +84,31 @@ class CSVDataset(Dataset):
         resave = False
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
-            data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME]*TIME_UNIT)
+            data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME])
             resave = True
 
         # Compute acceleration from velocity or velocity_comp
         if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1 or resave:
-            data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME]*TIME_UNIT)
+            data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME])
             resave = True
 
-        # Integrate current (torque) to get velocity
+        #Integrate current (torque) to get velocity
         if np.sum(np.isnan(data[:,VELOCITY_INT])) > 1 or resave:
-            # Get average of two neighbouring elements
-            curr_avs = data[:,CURRENT] + np.roll(data[:,CURRENT],1)
-            curr_avs = curr_avs[1:] * 0.5
+            # Find velocity values close to zeros
+            eps = 0.1
+            v_is_nill = np.logical_and(data[:,VELOCITY_COMP] <= eps, data[:,VELOCITY_COMP] >= -eps)
 
-            # Compute integral
-            data[0,VELOCITY_INT] = 0
-            data[1:,VELOCITY_INT] = np.multiply(np.diff(data[:,TIME]*TIME_UNIT),curr_avs)
-            tp = toeplitz(np.zeros(len(data[:,VELOCITY_INT])),data[:,VELOCITY_INT])
-            data[:,VELOCITY_INT] = np.sum(tp, axis=0)
-
-            epsilon = 0.1
-            # Correct drift
-            for i,v in np.ndenumerate(data[:,VELOCITY_COMP]):
-                if v <= epsilon and v >= -epsilon:
-                    data[(i[0]+1):,VELOCITY_INT] -= data[i,VELOCITY_INT]
-
-            # Mutliply with constants
-            if self.load_id == 0:
-                    data[:,VELOCITY_INT] *= K_TI / (LOAD_INERTIAS[self.load_id])
-            else:
-                data[:,VELOCITY_INT] *= K_TI / (LOAD_INERTIAS[0]+LOAD_INERTIAS[self.load_id])
-
+            # Integrate
+            idx1 = 0
+            for i,v in np.ndenumerate(v_is_nill[1:]):
+                if v:
+                    idx2 = i[0]
+                    sol = solve_ivp(ode_func,(data[idx1,TIME],data[idx2,TIME]),[0], \
+                        method="RK23", \
+                        t_eval = data[idx1:idx2,TIME], \
+                        args=(data,K_TI,LOAD_INERTIAS[self.load_id],MOTOR_FRICTIONS[self.load_id]))
+                    data[idx1:idx2,VELOCITY_INT] = sol.y
+                    idx1 = idx2
             resave = True
         
         # Save dataframe to csv if velocity or acceleration computed
@@ -125,7 +136,7 @@ class CSVDataset(Dataset):
         ax.plot(data[:,TIME],data[:,CURRENT])
         ax.plot(data[:,TIME],data[:,VELOCITY_INT])
         ax.axhline(y=0, color='k')
-        ax.set_xlabel("Time [ms]")
+        ax.set_xlabel("Time [s]")
         ax.set_ylabel("Amplitude")
         ax.legend([ "Setpoint [rad]", \
                     "Posistion [rad]", \
@@ -159,7 +170,7 @@ class CSVDataset(Dataset):
         self.X = self.X[hist_length-1:,:] #Cut out t<0
 
         # Compute torque depending on load inertia (declared in filename)
-        self.y = data[:,ACCELERATION_COMP] * LOAD_INERTIAS[self.load_id]
+        self.y = data[:,CURRENT] / 1000 * K_TI
         self.y = self.y[hist_length-1:] #Cut out t<0
 
         # Get time for plotting later on
@@ -351,24 +362,24 @@ def main():
     list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[1]
+    path = list_of_files[0]
     #path = max(list_of_files, key=os.path.getctime)
     #path = '../data/experiments/2023-02-22--15-00-04_dataset.csv'
     print("Opening: ",path)
 
-    for h in range(1,15):
+    for h_len in range(1,15):
         # Prepare dataset
         dataset = CSVDataset(path)
         dataset.preprocess()
         #dataset.plot_data()
-        dataset.prepare_data(hist_length=h)
+        dataset.prepare_data(hist_length=h_len)
         train_dl, test_dl = dataset.get_splits() # Get data loaders
 
         # Train model
-        model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h)
+        model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len)
         print(model_dir)
         os.makedirs(model_dir, exist_ok=True)
-        model = MLP(h, 1, dev, 32)
+        model = MLP(h_len, 1, dev, 32)
         train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
         # Evaluate model
         mse = evaluate_model(test_dl, model)
