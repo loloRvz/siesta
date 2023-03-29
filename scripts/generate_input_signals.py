@@ -21,8 +21,8 @@ STEP_VAR = 0.3      # [Rad]
 # Chirp input 
 CHRP_AMPL = 0.1               # [Rad]
 CHRP_FREQ1 = 0.05 *2*math.pi   # [Rad/s]
-CHRP_FREQ2 =   30 *2*math.pi   # [Rad/s]
-CHRP_PERIOD = 5               # [s]
+CHRP_FREQ2 =   15 *2*math.pi   # [Rad/s]
+CHRP_PERIOD = 3               # [s]
 
 # Flight data input
 FLIT_FILE = "23-02-08--21-26-11_ID5.csv"
@@ -31,7 +31,7 @@ FLIT_FILE = "23-02-08--21-26-11_ID5.csv"
 MIXD_INTERVAL = 5  # [s]
 
 # White noise input params
-NOIS_VARIANCE = 0.1  # [s]
+NOIS_VARIANCE = 0.05  # [s]
 
 # Enum
 STEP_IDX, CHRP_IDX, FLIT_IDX, MIXD_IDX = range(4)
@@ -57,7 +57,7 @@ def main():
     chrp_inputs = np.array([chirp_signal(t) for t in np.arange(0,DATA_LENGTH,1/CTRL_FREQ)])
 
     # Parse flight data setpoints
-    flight_data_path = dir_path + "/../data/flight_data/23-02-08--21-26-11_ID5.csv"
+    flight_data_path = dir_path + "/../data/flight_data/23-02-08--21-26-11_ID4.csv"
     flight_data_df = pd.read_csv(flight_data_path)
     flight_data_np = flight_data_df["setpoint[rad]"].to_numpy()[10000:] # remove first 10'000 data points (avoid constant input)
     flight_data_df = pd.DataFrame(flight_data_np, columns = ['flit'])

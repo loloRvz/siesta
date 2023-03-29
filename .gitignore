@@ -55,6 +55,7 @@ CATKIN_IGNORE
 data/input_signals/*.csv
 data/flight_data/*.csv
 data/models/*
+data/experiments/*
 
 scripts/__pycache__/
 scripts/runs/

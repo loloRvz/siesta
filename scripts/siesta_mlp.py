@@ -53,7 +53,6 @@ K_TI = 1 # T = K_TI * I
 
 
 def ode_func(t,w,data,k,J,b):
-    print("t_now: ",t)
     i_t = interp1d(data[:,TIME], data[:,CURRENT]/1000)
     # compute acceleration
     dwdt = k/J * i_t(t) - b/J * w
@@ -72,14 +71,15 @@ class CSVDataset(Dataset):
         self.df = pd.read_csv(path)
         self.X = np.empty([1,1]).astype('float32')
         self.y = np.empty([1]).astype('float32')
+        self.time = np.empty([1]).astype('float32')
         
     # preprocess data (compute velocities and accelerations)
     def preprocess(self):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        #fd = SavitzkyGolay(left=2, right=1, order=1, iwindow=True)
-        fd = SavitzkyGolay(left=0.0035, right=0.0035, order=1, iwindow=False)
+        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
+        #fd = SavitzkyGolay(left=0.0035, right=0.0035, order=1, iwindow=False)
 
         resave = False
         # Compute velocity from position 
@@ -93,14 +93,23 @@ class CSVDataset(Dataset):
             resave = True
 
         #Integrate current (torque) to get velocity
-        if np.sum(np.isnan(data[:,VELOCITY_INT])) > 1 or resave:
+        if False: #np.sum(np.isnan(data[:,VELOCITY_INT])) > 1 or resave:
+            print("Integrating velocity from current...")
             # Find velocity values close to zeros
             eps = 0.1
             v_is_nill = np.logical_and(data[:,VELOCITY_COMP] <= eps, data[:,VELOCITY_COMP] >= -eps)
 
-            # Integrate
+            # Integrate between those values
             idx1 = 0
-            for i,v in np.ndenumerate(v_is_nill[1:]):
+            for i,v in np.ndenumerate(v_is_nill):
+                if i[0] == 0:
+                    data[0,VELOCITY_INT] = 0
+                    continue
+
+                if i[0] == len(v_is_nill)-1:
+                    print(i[0])
+                    v = True
+
                 if v:
                     idx2 = i[0]
                     sol = solve_ivp(ode_func,(data[idx1,TIME],data[idx2,TIME]),[0], \
@@ -109,6 +118,8 @@ class CSVDataset(Dataset):
                         args=(data,K_TI,LOAD_INERTIAS[self.load_id],MOTOR_FRICTIONS[self.load_id]))
                     data[idx1:idx2,VELOCITY_INT] = sol.y
                     idx1 = idx2
+
+            data[idx2,VELOCITY_INT] = 0
             resave = True
         
         # Save dataframe to csv if velocity or acceleration computed
@@ -157,7 +168,7 @@ class CSVDataset(Dataset):
         plt.show()
 
     # prepare inputs and labels for learning process
-    def prepare_data(self,hist_length):
+    def prepare_data(self,hist_length,torque_est):
         data = self.df.to_numpy()
         self.X = np.resize(self.X,(data.shape[0],hist_length))
 
@@ -170,11 +181,15 @@ class CSVDataset(Dataset):
         self.X = self.X[hist_length-1:,:] #Cut out t<0
 
         # Compute torque depending on load inertia (declared in filename)
-        self.y = data[:,CURRENT] / 1000 * K_TI
+        if torque_est == 0:
+            self.y = data[:,ACCELERATION_COMP]*LOAD_INERTIAS[self.load_id]
+        else:
+            self.y = data[:,CURRENT] / 1000 * K_TI
         self.y = self.y[hist_length-1:] #Cut out t<0
 
-        # Get time for plotting later on
-        self.t =data[hist_length-1:,TIME]
+        # Get corresponding times
+        self.t = data[hist_length-1:,TIME]#Cut out t<0
+
 
     # get indexes for train and test rows
     def get_splits(self, n_test=0.1):
@@ -299,7 +314,7 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
         print('interrupted!')
 
 # evaluate model
-def evaluate_model(test_dl, model):
+def evaluate_model(test_dl, model, NILL=False):
     predictions, actuals = list(), list()
     for i, (inputs, targets) in enumerate(test_dl):
         # evaluate the model on the test set
@@ -312,13 +327,14 @@ def evaluate_model(test_dl, model):
         predictions.append(yhat)
         actuals.append(actual)
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
-    #predictions = np.zeros(predictions.shape)
+    if NILL:
+        predictions = np.zeros(predictions.shape)
     # calculate mse
     mse = mean_squared_error(actuals, predictions)
     return mse
 
 # plot predictions
-def plot_model_predictions(dataset, model):
+def plot_model_predictions(dataset, model, RMSE, NILL):
     # Get full dataloader from set
     full_dl = DataLoader(dataset, batch_size=1024, shuffle=False, pin_memory=True)
 
@@ -332,19 +348,19 @@ def plot_model_predictions(dataset, model):
         predictions.append(yhat)
         actuals.append(actual)
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
-    #predictions = np.zeros(predictions.shape)
+    if NILL:
+        predictions = np.zeros(predictions.shape)
 
     # Plot validation dataset to time
-    data = dataset.df.to_numpy()
     fig,ax=plt.subplots()
     ax.plot(dataset.t,dataset.X[:,0])
-    #ax.plot(dataset.t,data[:,POSITION])
     ax.plot(dataset.t,np.squeeze(actuals))
     ax.plot(dataset.t,np.squeeze(predictions))
     ax.set_xlabel("Time [ms]")
     ax.set_ylabel("Amplitude")
-    ax.legend(["Position error [rad]","Derived torque [Nm]","Predicted torque [Nm]"])
-    plt.title("Model Validation")
+    ax.axhline(y=0, color='k')
+    ax.legend(["Position error [rad]","Measured torque [Nm]","Predicted torque [Nm]"])
+    plt.title("Model Validation | RMSE: %f" % RMSE)
     plt.show()
 
 
@@ -359,30 +375,38 @@ def main():
 
     # Open measured data
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/experiments/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/experiments/training/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[0]
-    #path = max(list_of_files, key=os.path.getctime)
-    #path = '../data/experiments/2023-02-22--15-00-04_dataset.csv'
-    print("Opening: ",path)
+    #path = list_of_files[7]
 
-    for h_len in range(1,15):
+    h_len = 5
+    TORK = 0
+
+
+    for path in list_of_files:
+        print("Opening: ",path)
+
+        freq = int(os.path.basename(path)[19:22])
+
         # Prepare dataset
         dataset = CSVDataset(path)
         dataset.preprocess()
-        #dataset.plot_data()
-        dataset.prepare_data(hist_length=h_len)
+        dataset.prepare_data(hist_length=h_len, torque_est = TORK)
         train_dl, test_dl = dataset.get_splits() # Get data loaders
 
         # Train model
         model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len)
+        if TORK == 0:
+            model_dir += "_Ta"
+        else:
+            model_dir += "_Tc"
         print(model_dir)
         os.makedirs(model_dir, exist_ok=True)
         model = MLP(h_len, 1, dev, 32)
         train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
         # Evaluate model
-        mse = evaluate_model(test_dl, model)
+        mse = evaluate_model(test_dl, model, NILL = False)
         print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
         #plot_model_predictions(dataset, model)
 
