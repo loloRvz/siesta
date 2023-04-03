@@ -78,10 +78,10 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
-        #fd = SavitzkyGolay(left=0.0035, right=0.0035, order=1, iwindow=False)
+        fd = SavitzkyGolay(left=4, right=4, order=1, iwindow=True)
+        #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
 
-        resave = False
+        resave = True
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME])
@@ -168,28 +168,29 @@ class CSVDataset(Dataset):
         plt.show()
 
     # prepare inputs and labels for learning process
-    def prepare_data(self,hist_length,torque_est):
+    def prepare_data(self,hist_len,T_via, freq=400):
         data = self.df.to_numpy()
-        self.X = np.resize(self.X,(data.shape[0],hist_length))
+        self.X = np.resize(self.X,(data.shape[0],hist_len))
 
         # Get position error (setpoint-position)
         position_error = data[:,SETPOINT] - data[:,POSITION]
+        position = data[:,POSITION]
+
         #Get position error history
-        for i in range(hist_length):
+        for i in range(hist_len):
             self.X[:,i] = np.roll(position_error, i)
-            self.X[:i,hist_length-(i+1)] = np.nan
-        self.X = self.X[hist_length-1:,:] #Cut out t<0
+            self.X[:i,hist_len-(i+1)] = np.nan
+        self.X = self.X[hist_len-1:,:] #Cut out t<0
 
         # Compute torque depending on load inertia (declared in filename)
-        if torque_est == 0:
+        if T_via == 'a':
             self.y = data[:,ACCELERATION_COMP]*LOAD_INERTIAS[self.load_id]
         else:
             self.y = data[:,CURRENT] / 1000 * K_TI
-        self.y = self.y[hist_length-1:] #Cut out t<0
+        self.y = self.y[hist_len-1:] #Cut out t<0
 
         # Get corresponding times
-        self.t = data[hist_length-1:,TIME]#Cut out t<0
-
+        self.t = data[hist_len-1:,TIME]#Cut out t<0
 
     # get indexes for train and test rows
     def get_splits(self, n_test=0.1):
@@ -307,14 +308,14 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
                 print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
                 model_scripted.save(model_dir +  "/delta_" + str(epoch) + ".pt")
-            if epoch >= 300:
-                break
+            # if epoch >= 300:
+            #     break
             epoch = epoch + 1
     except KeyboardInterrupt:
         print('interrupted!')
 
 # evaluate model
-def evaluate_model(test_dl, model, NILL=False):
+def evaluate_model(test_dl, model):
     predictions, actuals = list(), list()
     for i, (inputs, targets) in enumerate(test_dl):
         # evaluate the model on the test set
@@ -327,14 +328,14 @@ def evaluate_model(test_dl, model, NILL=False):
         predictions.append(yhat)
         actuals.append(actual)
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
-    if NILL:
-        predictions = np.zeros(predictions.shape)
+
     # calculate mse
     mse = mean_squared_error(actuals, predictions)
-    return mse
+    std = np.std(actuals)
+    return mse, std
 
 # plot predictions
-def plot_model_predictions(dataset, model, RMSE, NILL):
+def plot_model_predictions(dataset, model, RMSE):
     # Get full dataloader from set
     full_dl = DataLoader(dataset, batch_size=1024, shuffle=False, pin_memory=True)
 
@@ -348,8 +349,6 @@ def plot_model_predictions(dataset, model, RMSE, NILL):
         predictions.append(yhat)
         actuals.append(actual)
     predictions, actuals = np.vstack(predictions), np.vstack(actuals)
-    if NILL:
-        predictions = np.zeros(predictions.shape)
 
     # Plot validation dataset to time
     fig,ax=plt.subplots()
@@ -373,42 +372,36 @@ def main():
         dev = "cpu"
         print("Using CPU D:")
 
-    # Open measured data
+    # Model parameters
+    h_len = 8
+    T_via = 'a'
+
+    # Open training dataset
     dir_path = os.path.dirname(os.path.realpath(__file__))
     list_of_files = glob.glob(dir_path + '/../data/experiments/training/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    #path = list_of_files[7]
+    path = list_of_files[0]
+    print("Opening: ",path)
+    # Prepare dataset
+    dataset = CSVDataset(path)
+    dataset.preprocess()
+    dataset.prepare_data(hist_len=h_len, T_via = T_via)
+    train_dl, test_dl = dataset.get_splits(n_test=0.1) # Get data loaders
 
-    h_len = 5
-    TORK = 0
+    # Make dir for model
+    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len).zfill(2)+"_T"+T_via
+    print("Opening directory: ",model_dir)
+    os.makedirs(model_dir, exist_ok=True)
 
+    # Train model
+    model = MLP(h_len, 1, dev, 32)
+    train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
 
-    for path in list_of_files:
-        print("Opening: ",path)
-
-        freq = int(os.path.basename(path)[19:22])
-
-        # Prepare dataset
-        dataset = CSVDataset(path)
-        dataset.preprocess()
-        dataset.prepare_data(hist_length=h_len, torque_est = TORK)
-        train_dl, test_dl = dataset.get_splits() # Get data loaders
-
-        # Train model
-        model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len)
-        if TORK == 0:
-            model_dir += "_Ta"
-        else:
-            model_dir += "_Tc"
-        print(model_dir)
-        os.makedirs(model_dir, exist_ok=True)
-        model = MLP(h_len, 1, dev, 32)
-        train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
-        # Evaluate model
-        mse = evaluate_model(test_dl, model, NILL = False)
-        print('MSE: %.3f, RMSE: %.3f' % (mse, np.sqrt(mse)))
-        #plot_model_predictions(dataset, model)
+    # Evaluate model
+    mse,std = evaluate_model(test_dl, model)
+    print('MSE: %.3f, RMSE: %.3f, STD: %.3f' % (mse, np.sqrt(mse), std))
+    #plot_model_predictions(dataset, model)
 
 
 
