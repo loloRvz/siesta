@@ -16,10 +16,10 @@ READ_FREQ = 800     # [Hz]
 
 # Step input
 STEP_FREQ = 5       # [Hz]
-STEP_VAR = 0.3      # [Rad]
+STEP_VAR = 0.01      # [Rad]
 
 # Chirp input 
-CHRP_AMPL = 0.1               # [Rad]
+CHRP_AMPL = 0.01               # [Rad]
 CHRP_FREQ1 = 0.05 *2*math.pi   # [Rad/s]
 CHRP_FREQ2 =   15 *2*math.pi   # [Rad/s]
 CHRP_PERIOD = 3               # [s]
@@ -31,7 +31,7 @@ FLIT_FILE = "23-02-08--21-26-11_ID5.csv"
 MIXD_INTERVAL = 5  # [s]
 
 # White noise input params
-NOIS_VARIANCE = 0.05  # [s]
+NOIS_VARIANCE = 0.01  # [s]
 
 # Enum
 STEP_IDX, CHRP_IDX, FLIT_IDX, MIXD_IDX = range(4)

@@ -81,7 +81,7 @@ class CSVDataset(Dataset):
         fd = SavitzkyGolay(left=4, right=4, order=1, iwindow=True)
         #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
 
-        resave = True
+        resave = False
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME])
@@ -374,7 +374,7 @@ def main():
 
     # Model parameters
     h_len = 8
-    T_via = 'a'
+    T_via = 'c'
 
     # Open training dataset
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -383,6 +383,7 @@ def main():
     list_of_files.reverse()
     path = list_of_files[0]
     print("Opening: ",path)
+
     # Prepare dataset
     dataset = CSVDataset(path)
     dataset.preprocess()
