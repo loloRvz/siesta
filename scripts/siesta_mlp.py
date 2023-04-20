@@ -174,7 +174,7 @@ class CSVDataset(Dataset):
 
         # Get position error (setpoint-position)
         position_error = data[:,SETPOINT] - data[:,POSITION]
-        position = data[:,POSITION]
+        velocity = data[:,VELOCITY_COMP]
 
         #Get position error history
         for i in range(hist_len):
@@ -374,7 +374,7 @@ def main():
 
     # Model parameters
     h_len = 8
-    T_via = 'c'
+    T_via = 'a'
 
     # Open training dataset
     dir_path = os.path.dirname(os.path.realpath(__file__))

@@ -15,7 +15,7 @@ def main():
     #list_of_files.reverse()
 
     # Load trained model
-    model_dir = dir_path + "/../data/models/" + "23-03-29--10-08-46_400Hz-L9-mixd-PHL08_Ta" + "/delta_2000.pt"
+    model_dir = dir_path + "/../data/models/" + "23-03-29--10-08-46_400Hz-L9-mixd-PHL08_Ta_vel" + "/delta_300.pt"
     print("Opening model:", model_dir)
     model = torch.jit.load(model_dir)
 
