@@ -23,13 +23,8 @@
   <build_export_depend>omav_hovery_interface</build_export_depend>
   <exec_depend>omav_hovery_interface</exec_depend>
 
-  <!--build_depend>dynamixel_sdk</build_depend>
-  <build_depend>dynamixel_sdk_examples</build_depend>
-  <build_export_depend>dynamixel_sdk</build_export_depend>
-  <build_export_depend>dynamixel_sdk_examples</build_export_depend>
-  <exec_depend>dynamixel_sdk</exec_depend>
-  <exec_depend>dynamixel_sdk_examples</exec_depend-->
-
+  <build_depend>message_generation</build_depend>
+  
   <export>
 
   </export>

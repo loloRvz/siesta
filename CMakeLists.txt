@@ -4,6 +4,8 @@ project(siesta)
 add_definitions(-std=c++17 -fPIC -Wall -Wno-reorder -Wno-unknown-pragmas)
 add_compile_definitions(MODE_DEFAULT)
 
+find_package(PythonLibs REQUIRED)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -11,8 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   omav_hovery_interface
   message_generation
-  #dynamixel_sdk
-  #dynamixel_sdk_examples
 )
 
 ## Generate messages in the 'msg' folder
@@ -23,8 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 # Generate services in the 'srv' folder
-add_service_files(
-  FILES
+add_service_files(FILES
   GetSiesta.srv
 )
 
@@ -35,17 +34,18 @@ add_service_files(
 #   Action2.action
 # )
 
-## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+catkin_python_setup()
 
-## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+# Generate added messages and services with any dependencies listed here
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
+catkin_install_python(PROGRAMS
+  setup.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -66,3 +66,25 @@ target_link_libraries(dxl_quick_read_node ${catkin_LIBRARIES})
 add_executable(set_point_publisher_node src/set_point_publisher_node.cpp)
 add_dependencies(set_point_publisher_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(set_point_publisher_node ${catkin_LIBRARIES})
+
+add_executable(test_libtorch src/test_libtorch.cpp)
+add_dependencies(test_libtorch ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(test_libtorch ${catkin_LIBRARIES})
+
+
+
+set(CMAKE_PREFIX_PATH "/root/catkin_ws/src/libtorch;/opt/ros/noetic")
+
+find_package(Torch REQUIRED)
+if(Torch_FOUND)
+message(WARNING "Torch FOUND, building torch modules.")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+else()
+message(WARNING "Torch NOT FOUND, skipping torch modules.")
+endif()
+set(CMAKE_BUILD_TYPE Release)
+
+if(Torch_FOUND)
+target_link_libraries(test_libtorch "${TORCH_LIBRARIES}") 
+SET_TARGET_PROPERTIES(test_libtorch PROPERTIES CXX_STANDARD 14)
+endif()
