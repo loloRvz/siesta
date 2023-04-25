@@ -5,11 +5,13 @@
 
 int main(){
     // Declare stuff
+    std::vector<float> pos_err_hist_ = {0,0,0,0,0,0,0.5,-1};
+
     torch::jit::script::Module policy_;
-    float pos_err_hist_ [POSITION_HISTORY_LENGTH] = {0,0,0,0,0,0,0.5,-1};
-    std::vector<torch::jit::IValue> input;
-    torch::Tensor model_input;
-    torch::Tensor model_output;
+    at::Tensor input_tensor;
+    at::Tensor output_tensor;
+    std::vector<torch::jit::IValue> input_vect;
+    at::TensorOptions options = torch::TensorOptions().dtype(torch::kFloat32);
 
     // Init model and position error history array
     try {
@@ -18,23 +20,20 @@ int main(){
       std::cerr << " Error loading the model\n";
     }
     std::cout << "model loaded ok\n";
-
-    // Prepare inputs
-    model_input = torch::zeros({1, POSITION_HISTORY_LENGTH});
-    for(int i = 0; i < POSITION_HISTORY_LENGTH; i++){
-        model_input[0].index_put_({i}, pos_err_hist_[i]);
-    }
-    input.push_back(model_input);
+    policy_.eval();
+ 
+    input_tensor = torch::from_blob(pos_err_hist_.data(), {POSITION_HISTORY_LENGTH}, options);
+    input_vect.push_back(input_tensor);
 
     // Compute output
     try {
-      model_output = policy_.forward(input).toTensor();
+      output_tensor = policy_.forward(input_vect).toTensor();
     } catch (const c10::Error& e){
       std::cerr << " Error forward pass\n";
     }
 
-    std::cout << "Input: " << model_input << std::endl;
-    std::cout << "Output: " << model_output << std::endl;
+    std::cout << "Input: " << input_vect << std::endl;
+    std::cout << "Output: " << output_tensor << std::endl;
     
 
 
