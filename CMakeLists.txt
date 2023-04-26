@@ -71,9 +71,13 @@ add_executable(test_libtorch src/test_libtorch.cpp)
 add_dependencies(test_libtorch ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(test_libtorch ${catkin_LIBRARIES})
 
+add_executable(test_onnx src/test_onnx.cpp)
+add_dependencies(test_onnx ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(test_onnx ${catkin_LIBRARIES})
 
 
-set(CMAKE_PREFIX_PATH "/root/catkin_ws/src/libtorch;/opt/ros/noetic")
+
+set(CMAKE_PREFIX_PATH "/root/catkin_ws/src/libtorch;/home/lolo/omav_ws/src/libtorch;/opt/ros/noetic")
 
 find_package(Torch REQUIRED)
 if(Torch_FOUND)

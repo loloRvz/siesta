@@ -15,14 +15,14 @@ int main(){
 
     // Init model and position error history array
     try {
-      policy_ = torch::jit::load("/root/catkin_ws/src/rotors_simulator/rotors_description/models/T_a.pt");
+      policy_ = torch::jit::load("/home/lolo/omav_ws/src/rotors_simulator/rotors_description/models/T_a.pt");
     } catch (const c10::Error& e){
       std::cerr << " Error loading the model\n";
     }
     std::cout << "model loaded ok\n";
     policy_.eval();
  
-    input_tensor = torch::from_blob(pos_err_hist_.data(), {POSITION_HISTORY_LENGTH}, options);
+    input_tensor = torch::from_blob(pos_err_hist_.data(), {1,POSITION_HISTORY_LENGTH}, options);
     input_vect.push_back(input_tensor);
 
     // Compute output
@@ -33,6 +33,7 @@ int main(){
     }
 
     std::cout << "Input: " << input_vect << std::endl;
+    std::cout << input_vect.size() << std::endl;
     std::cout << "Output: " << output_tensor << std::endl;
     
 
