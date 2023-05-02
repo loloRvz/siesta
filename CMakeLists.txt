@@ -77,18 +77,36 @@ target_link_libraries(test_onnx ${catkin_LIBRARIES})
 
 
 
-set(CMAKE_PREFIX_PATH "/root/catkin_ws/src/libtorch;/home/lolo/omav_ws/src/libtorch;/opt/ros/noetic")
+set(CMAKE_PREFIX_PATH "~/omav_ws/src/libtorch:~/omav_ws/src/onnxruntime:/opt/ros/noetic")
+
+#include_directories(${ADDITIONAL_INCLUDE_DIRS} "/usr/include/onnxruntime")
+include_directories(${ADDITIONAL_INCLUDE_DIRS} "/home/lolo/omav_ws/src/onnxruntime/include")
+
+#/home/lolo/.local/share/cmake
+
 
 find_package(Torch REQUIRED)
 if(Torch_FOUND)
-message(WARNING "Torch FOUND, building torch modules.")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+  message(WARNING "Torch FOUND, building torch modules.")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 else()
-message(WARNING "Torch NOT FOUND, skipping torch modules.")
+  message(WARNING "Torch NOT FOUND, skipping torch modules.")
 endif()
-set(CMAKE_BUILD_TYPE Release)
 
 if(Torch_FOUND)
 target_link_libraries(test_libtorch "${TORCH_LIBRARIES}") 
 SET_TARGET_PROPERTIES(test_libtorch PROPERTIES CXX_STANDARD 14)
+endif()
+
+
+find_package(onnxruntime REQUIRED)
+if(onnxruntime_FOUND)
+  message(WARNING "Onnx FOUND, building onnx modules.")
+else()
+  message(WARNING "Torch NOT FOUND, skipping torch modules.")
+endif()
+
+if(onnxruntime_FOUND)
+target_link_libraries(test_onnx "${onnxruntime_LIBRARIES}") 
+SET_TARGET_PROPERTIES(test_onnx PROPERTIES CXX_STANDARD 14)
 endif()
