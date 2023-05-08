@@ -25,12 +25,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.metrics import mean_squared_error
 
-
 # Data columns
 TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP, VELOCITY_INT = range(8)
-
-# Experiment Parameters
-SMPL_FREQ = 800 # Hz
 
 LOAD_INERTIAS = np.array([1.7e-3, \
                           1.7e-3 + 224.5440144e-6, \
@@ -38,7 +34,7 @@ LOAD_INERTIAS = np.array([1.7e-3, \
                           1.7e-3 + 287.7428055e-6, \
                           1.7e-3 + 548.4378187e-6 + 224.5440144e-6, \
                           1, 1, 1, 1, 
-                          1.7e-3 + 287e-6])    #kg*m^2
+                          287e-6])    #kg*m^2
 
 
 MOTOR_FRICTIONS = np.array([5e-3, \
@@ -67,11 +63,14 @@ class CSVDataset(Dataset):
     def __init__(self, path):
         # load the csv file as a dataframe
         self.path = path
-        self.load_id = load_id = int(os.path.basename(self.path)[26])
-        self.df = pd.read_csv(path)
-        self.X = np.empty([1,1]).astype('float32')
-        self.y = np.empty([1]).astype('float32')
-        self.time = np.empty([1]).astype('float32')
+        self.load_id = int(os.path.basename(self.path)[26])
+        self.df = pd.read_csv(path, dtype=np.float64)
+        self.X = np.empty([1,1]).astype('float64')
+        self.y = np.empty([1]).astype('float64')
+
+        print("Loading model: ", os.path.basename(self.path))
+        print("Load id: ", self.load_id)
+        print("Load inertia: ", LOAD_INERTIAS[self.load_id])
         
     # preprocess data (compute velocities and accelerations)
     def preprocess(self):
@@ -169,7 +168,7 @@ class CSVDataset(Dataset):
 
     # prepare inputs and labels for learning process
     def prepare_data(self,hist_len,T_via, freq=400):
-        data = self.df.to_numpy()
+        data = self.df.to_numpy(dtype=np.float64)
         self.X = np.resize(self.X,(data.shape[0],hist_len))
 
         # Get position error (setpoint-position)
@@ -235,6 +234,8 @@ class MLP(Module):
         # output
         self.hidden4 = Linear(layerDim, n_outputs).to(self.dev)
         xavier_uniform_(self.hidden4.weight).to(self.dev)
+        
+        self.to(torch.float64)
 
     # forward propagate input
     def forward(self, X):
@@ -270,7 +271,7 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
             steps = 0
             # enumerate mini batches
             for i, (inputs, targets) in enumerate(train_dl):
-                inputs, targets = inputs.to(dev), targets.to(dev).unsqueeze(1).float()
+                inputs, targets = inputs.to(dev), targets.to(dev).unsqueeze(1)
                 # clear the gradients
                 optimizer.zero_grad()
                 # compute the model output
@@ -307,6 +308,7 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
             if epoch % 100 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
+                model_scripted.double()
                 model_scripted.save(model_dir +  "/delta_" + str(epoch) + ".pt")
             # if epoch >= 300:
             #     break
@@ -365,6 +367,7 @@ def plot_model_predictions(dataset, model, RMSE):
 
 ### SCRIPT ###
 def main():
+    torch.set_default_dtype(torch.float64)
     if torch.cuda.is_available():
         dev = "cuda:0"
         print("Using GPU!")
@@ -397,6 +400,7 @@ def main():
 
     # Train model
     model = MLP(h_len, 1, dev, 32)
+    model.to(torch.float64)
     train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
 
     # Evaluate model

@@ -1,4 +1,4 @@
-load_id : 2                 # Choose Load '1','2','3', or '0' for no load. Load '4' for loads 1 & 2 stacked
+load_id : 9                 # Choose Load '1','2','3', or '0' for no load. Load '9' for drone arm
 
 
 control_frequency: 200      # Frequency of input signal to motor (should be 200 Hz)
