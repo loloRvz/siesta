@@ -10,13 +10,13 @@ import matplotlib.pyplot as plt
 
 ## INPUT SIGNAL PARAMETERS ##
 # General
-DATA_LENGTH = 120   # [s]
+DATA_LENGTH = 300   # [s]
 CTRL_FREQ = 200     # [Hz]
 READ_FREQ = 800     # [Hz]
 
 # Step input
 STEP_FREQ = 5       # [Hz]
-STEP_VAR = 0.01      # [Rad]
+STEP_VAR = 0.05      # [Rad]
 
 # Chirp input 
 CHRP_AMPL = 0.01               # [Rad]
@@ -52,6 +52,8 @@ def main():
     # Compute random step input
     step_inputs = np.random.normal(0, STEP_VAR, DATA_LENGTH*STEP_FREQ)
     step_inputs = np.repeat(step_inputs, CTRL_FREQ/STEP_FREQ)
+    # step_inputs = np.array([[STEP_VAR,-STEP_VAR]] * int(DATA_LENGTH*STEP_FREQ/2))
+    # step_inputs = np.repeat(step_inputs, CTRL_FREQ/STEP_FREQ)
 
     # Compute chirp signal input
     chrp_inputs = np.array([chirp_signal(t) for t in np.arange(0,DATA_LENGTH,1/CTRL_FREQ)])

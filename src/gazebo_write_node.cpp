@@ -47,7 +47,7 @@ int main(int argc, char ** argv) {
 	msg.normalized.clear();
 	for(int i=0; i<6; i++){
 		msg.angles.push_back(NAN);
-		msg.angular_velocities.push_back(100);
+		msg.angular_velocities.push_back(0);
 		msg.normalized.push_back(NAN);
 	}for(int i=6; i<12; i++){
 		msg.angles.push_back(0);

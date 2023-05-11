@@ -26,7 +26,7 @@ from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import mean_squared_error
 
 # Data columns
-TIME, SETPOINT, POSITION, VELOCITY, CURRENT, VELOCITY_COMP, ACCELERATION_COMP, VELOCITY_INT = range(8)
+TIME, SETPOINT, POSITION, CURRENT, VELOCITY_COMP, ACCELERATION_COMP = range(6)
 
 LOAD_INERTIAS = np.array([1.7e-3, \
                           1.7e-3 + 224.5440144e-6, \
@@ -92,34 +92,33 @@ class CSVDataset(Dataset):
             resave = True
 
         #Integrate current (torque) to get velocity
-        if False: #np.sum(np.isnan(data[:,VELOCITY_INT])) > 1 or resave:
-            print("Integrating velocity from current...")
-            # Find velocity values close to zeros
-            eps = 0.1
-            v_is_nill = np.logical_and(data[:,VELOCITY_COMP] <= eps, data[:,VELOCITY_COMP] >= -eps)
+        # print("Integrating velocity from current...")
+        # # Find velocity values close to zeros
+        # eps = 0.1
+        # v_is_nill = np.logical_and(data[:,VELOCITY_COMP] <= eps, data[:,VELOCITY_COMP] >= -eps)
 
-            # Integrate between those values
-            idx1 = 0
-            for i,v in np.ndenumerate(v_is_nill):
-                if i[0] == 0:
-                    data[0,VELOCITY_INT] = 0
-                    continue
+        # # Integrate between those values
+        # idx1 = 0
+        # for i,v in np.ndenumerate(v_is_nill):
+        #     if i[0] == 0:
+        #         data[0,VELOCITY_INT] = 0
+        #         continue
 
-                if i[0] == len(v_is_nill)-1:
-                    print(i[0])
-                    v = True
+        #     if i[0] == len(v_is_nill)-1:
+        #         print(i[0])
+        #         v = True
 
-                if v:
-                    idx2 = i[0]
-                    sol = solve_ivp(ode_func,(data[idx1,TIME],data[idx2,TIME]),[0], \
-                        method="RK23", \
-                        t_eval = data[idx1:idx2,TIME], \
-                        args=(data,K_TI,LOAD_INERTIAS[self.load_id],MOTOR_FRICTIONS[self.load_id]))
-                    data[idx1:idx2,VELOCITY_INT] = sol.y
-                    idx1 = idx2
+        #     if v:
+        #         idx2 = i[0]
+        #         sol = solve_ivp(ode_func,(data[idx1,TIME],data[idx2,TIME]),[0], \
+        #             method="RK23", \
+        #             t_eval = data[idx1:idx2,TIME], \
+        #             args=(data,K_TI,LOAD_INERTIAS[self.load_id],MOTOR_FRICTIONS[self.load_id]))
+        #         data[idx1:idx2,VELOCITY_INT] = sol.y
+        #         idx1 = idx2
 
-            data[idx2,VELOCITY_INT] = 0
-            resave = True
+        # data[idx2,VELOCITY_INT] = 0
+        # resave = True
         
         # Save dataframe to csv if velocity or acceleration computed
         if resave:
@@ -135,7 +134,6 @@ class CSVDataset(Dataset):
         data[:,CURRENT] /= 1000
         data[:,VELOCITY_COMP] /= 10
         data[:,ACCELERATION_COMP] /= 1000
-        data[:,VELOCITY_INT] /= 10
 
         fig,ax=plt.subplots()
         #ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
@@ -144,16 +142,14 @@ class CSVDataset(Dataset):
         ax.plot(data[:,TIME],data[:,VELOCITY_COMP])
         ax.plot(data[:,TIME],data[:,ACCELERATION_COMP])
         ax.plot(data[:,TIME],data[:,CURRENT])
-        ax.plot(data[:,TIME],data[:,VELOCITY_INT])
         ax.axhline(y=0, color='k')
         ax.set_xlabel("Time [s]")
         ax.set_ylabel("Amplitude")
         ax.legend([ "Setpoint [rad]", \
-                    "Posistion [rad]", \
+                    "Position [rad]", \
                     "Derived Velocity [10rad/s]", \
                     "Derived Accleration [1000rad/s^2]", \
-                    "Current [A]", \
-                    "Integrated Velocity [10rad/s]"])                        
+                    "Current [A]"]) # \                      
         plt.title("Motor data reading @400Hz")
 
         """ 

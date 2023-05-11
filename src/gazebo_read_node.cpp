@@ -114,10 +114,10 @@ int main(int argc, char ** argv) {
 		position_angle = pg.getPos() + M_PI;
 
 		// Write data to csv file
-		sprintf(data_str, "%10.6f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f,%03.3f\n",
+		sprintf(data_str, "%10.6f,%07.5f,%07.5f,%03.3f,%03.3f,%03.3f,%03.3f,%03.3f\n",
 			duration_cast<microseconds>(t_now - t_start).count()/1e6,
-			set_point_angle, 
-			position_angle, 
+			set_point_angle - M_PI, 
+			position_angle - M_PI, 
 			NAN,
 			NAN,
 			NAN,

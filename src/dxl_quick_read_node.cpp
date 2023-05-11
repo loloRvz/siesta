@@ -56,7 +56,7 @@ int main(int argc, char ** argv) {
 	time_t curr_time; 
 	tm * curr_tm;
 	char file_str[100], time_str[100], exprmt_descr_str[100], data_str[100];
-	strcpy(file_str, "/home/lolo/siesta_ws/src/siesta/data/experiments/"); //Global path
+	strcpy(file_str, "/home/lolo/omav_ws/src/siesta/data/experiments/training/"); //Global path
 	time(&curr_time);
 	curr_tm = localtime(&curr_time);
 	strftime(time_str, 100, "%y-%m-%d--%H-%M-%S_", curr_tm);
@@ -78,16 +78,15 @@ int main(int argc, char ** argv) {
 	strcat(file_str,".csv");
 
 	// Open file to write data
+	std::cout << "Opening: " << file_str << std::endl;
 	std::ofstream myfile;
 	myfile.open(file_str);
 	myfile << "time[s],"
 			  "setpoint[rad],"
 			  "position[rad],"
-			  "velocity[rad/s],"
 			  "current[mA],"
 			  "velocity_computed[rad/s],"
-			  "acceleration_computed[rad/s^2],"
-			  "velocity_integrated[rad/s] \n"; // Set column descriptions
+			  "acceleration_computed[rad/s^2]\n"; // Set column descriptions
 
 	// Time variables
 	time_point t_now = std::chrono::system_clock::now();
@@ -102,18 +101,16 @@ int main(int argc, char ** argv) {
 		t_now = std::chrono::system_clock::now();
 
 		// Read motor data & write setpoint
-		setPointAngle[0] = ps.getSetPoint() + M_PI;
+		setPointAngle[0] = ps.getSetPoint();
 		ta_adapter.write(setPointAngle);
 		readBackStatus = ta_adapter.read();
 
 		// Write data to csv file
-		sprintf(data_str, "%10.6f,%07.5f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f,%03.3f\n",
+		sprintf(data_str, "%10.6f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f\n",
 			duration_cast<microseconds>(t_now - t_start).count()/1e6,
-			readBackStatus[0].setpoint - M_PI, 
-			readBackStatus[0].position - M_PI, 
-			readBackStatus[0].velocity,
+			readBackStatus[0].setpoint, 
+			readBackStatus[0].position,
 			readBackStatus[0].current,
-			NAN,
 			NAN,
 			NAN);
 		myfile << data_str;
