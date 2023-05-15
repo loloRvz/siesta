@@ -88,12 +88,12 @@ int main(int argc, char ** argv) {
 			  "velocity_computed[rad/s],"
 			  "acceleration_computed[rad/s^2]\n"; // Set column descriptions
 
+	// Wait for first setpoint topic to be published
+	ros::topic::waitForMessage<std_msgs::Float32>(setpoint_topic_,ros::Duration(5));
+
 	// Time variables
 	time_point t_now = std::chrono::system_clock::now();
 	time_point t_start = std::chrono::system_clock::now();
-
-	// Wait for first setpoint topic to be published
-	ros::topic::waitForMessage<std_msgs::Float32>(setpoint_topic_,ros::Duration(5));
 
 	ROS_INFO("Polling motor...");
 	while (ros::ok()) {

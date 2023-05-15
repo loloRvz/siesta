@@ -91,35 +91,31 @@ int main(int argc, char ** argv) {
 	myfile << "time[s],"
 			  "setpoint[rad],"
 			  "position[rad],"
-			  "velocity[rad/s],"
 			  "current[mA],"
 			  "velocity_computed[rad/s],"
-			  "acceleration_computed[rad/s^2],"
-			  "velocity_integrated[rad/s] \n"; // Set column descriptions
-
-	// Time variables
-	time_point t_now = std::chrono::system_clock::now();
-	time_point t_start = std::chrono::system_clock::now();
+			  "acceleration_computed[rad/s^2] \n"; // Set column descriptions
 
 	// Wait for first setpoint topic to be published
 	ros::topic::waitForMessage<mav_msgs::Actuators>(setpoint_topic_,ros::Duration(5));
 
+	// Time variables
+	ros::Time t_start = ros::Time::now();
+	ros::Time t_now = ros::Time::now();
+
 	ROS_INFO("Polling motor...");
 	while (ros::ok()) {
 		// Measure exact loop time
-		t_now = std::chrono::system_clock::now();
+		t_now = ros::Time::now();
 
 		// Read motor data & write setpoint
 		set_point_angle = ps.getSetPoint() + M_PI;
 		position_angle = pg.getPos() + M_PI;
 
 		// Write data to csv file
-		sprintf(data_str, "%10.6f,%07.5f,%07.5f,%03.3f,%03.3f,%03.3f,%03.3f,%03.3f\n",
-			duration_cast<microseconds>(t_now - t_start).count()/1e6,
+		sprintf(data_str, "%10.6f,%07.5f,%07.5f,%03.3f,%03.3f,%03.3f\n",
+			(t_now - t_start).toSec(),
 			set_point_angle - M_PI, 
 			position_angle - M_PI, 
-			NAN,
-			NAN,
 			NAN,
 			NAN,
 			NAN);

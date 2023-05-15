@@ -52,8 +52,8 @@ def main():
     # Compute random step input
     step_inputs = np.random.normal(0, STEP_VAR, DATA_LENGTH*STEP_FREQ)
     step_inputs = np.repeat(step_inputs, CTRL_FREQ/STEP_FREQ)
-    # step_inputs = np.array([[STEP_VAR,-STEP_VAR]] * int(DATA_LENGTH*STEP_FREQ/2))
-    # step_inputs = np.repeat(step_inputs, CTRL_FREQ/STEP_FREQ)
+    step_inputs = np.array([[STEP_VAR,-STEP_VAR]] * int(DATA_LENGTH*STEP_FREQ/2))
+    step_inputs = np.repeat(step_inputs, CTRL_FREQ/STEP_FREQ)
 
     # Compute chirp signal input
     chrp_inputs = np.array([chirp_signal(t) for t in np.arange(0,DATA_LENGTH,1/CTRL_FREQ)])
