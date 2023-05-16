@@ -14,11 +14,11 @@ def main():
     list_of_files.reverse()
 
 
-
+    # Load data from files
     times = []
     setpoints = []
     positions = []
-
+    torques = []
     for path in list_of_files:
         print("Opening: ",path)
 
@@ -31,32 +31,32 @@ def main():
         times.append(data[:,TIME])
         setpoints.append(data[:,SETPOINT])
         positions.append(data[:,POSITION])
+        torques.append(data[:,ACCELERATION_COMP] * LOAD_INERTIAS[dataset.load_id])
 
-
+    # Compute lags
     for i in range(1,len(times)):
         # Compute lag with cross correlation
         corr = signal.correlate(setpoints[i], setpoints[0], mode='full')
         lags = signal.correlation_lags(len(setpoints[i]), len(setpoints[0]), mode='full')
-        lag = -lags[np.argmax(corr)]/400
+        lag = lags[np.argmax(corr)]/400
 
         # Get start lag
-        lag += times[0][0] - times[i][0]
+        lag += times[i][0] - times[0][0]
         
-        times[i] += lag
+        times[i] -= lag
         print(lag, " seconds")
 
-    times[1] -= 0
-    times[2] -= 0
+    times[1] -= -0.07
+    times[2] -= -0.07
 
-
-    corr = signal.correlate(setpoints[2], setpoints[0], mode='full')
-    lags = signal.correlation_lags(len(setpoints[2]), len(setpoints[0]), mode='full')
-    print(lags[np.argmax(corr)]/400)
+    # corr = signal.correlate(setpoints[2], setpoints[0], mode='full')
+    # lags = signal.correlation_lags(len(setpoints[2]), len(setpoints[0]), mode='full')
+    # print(lags[np.argmax(corr)]/400)
 
     fig,ax=plt.subplots()
-    ax.plot(times[0],setpoints[0])
+    ax.plot(times[0],setpoints[0],"--")
     for i in range(len(positions)):
-        ax.plot(times[i],positions[i])
+        ax.plot(times[i],torques[i])
     # ax.plot(lags,corr)
     ax.axhline(y=0, color='k')
     ax.set_xlabel("Time [ms]")
