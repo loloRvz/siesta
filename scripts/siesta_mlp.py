@@ -77,7 +77,7 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=4, right=4, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
         #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
 
         resave = False
@@ -198,7 +198,7 @@ class CSVDataset(Dataset):
         # calculate the split
         train, test = random_split(self, [train_size, test_size])
         train_dl = DataLoader(train, batch_size=32, shuffle=True, pin_memory=True)
-        test_dl = DataLoader(test, batch_size=1024, shuffle=False, pin_memory=True)
+        test_dl = DataLoader(test, batch_size=1024, shuffle=True, pin_memory=True)
         return train_dl, test_dl
 
     # number of rows in the dataset
@@ -372,7 +372,7 @@ def main():
         print("Using CPU D:")
 
     # Model parameters
-    h_len = 8
+    h_len = 5
     T_via = 'a'
 
     # Open training dataset
