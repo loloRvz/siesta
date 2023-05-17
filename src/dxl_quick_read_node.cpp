@@ -61,20 +61,10 @@ int main(int argc, char ** argv) {
 	curr_tm = localtime(&curr_time);
 	strftime(time_str, 100, "%y-%m-%d--%H-%M-%S_", curr_tm);
 	strcat(file_str,time_str);  // Add date & time
-	sprintf(exprmt_descr_str, "%dHz-L%d",SMPL_FREQ,LOAD_ID);
+	sprintf(exprmt_descr_str, "%dHz-L%d-",SMPL_FREQ,LOAD_ID);
 	strcat(file_str,exprmt_descr_str); //Add load id
 	//Add input type
-	if(INPUT_TYPE == STEP){
-		strcat(file_str,"-step");
-	}else if(INPUT_TYPE == CHRP){
-		strcat(file_str,"-chrp");
-	}else if(INPUT_TYPE == FLIT){
-		strcat(file_str,"-flit");
-	}else if(INPUT_TYPE == MIXD){
-		strcat(file_str,"-mixd");
-	}else if(INPUT_TYPE == NOIS){
-		strcat(file_str,"-nois");
-	}
+	strcat(file_str,input_types_strings[INPUT_TYPE]);
 	strcat(file_str,".csv");
 
 	// Open file to write data

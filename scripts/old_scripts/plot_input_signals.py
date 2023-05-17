@@ -11,7 +11,6 @@ def main():
     dir_path = os.path.dirname(os.path.realpath(__file__))
     list_of_files = glob.glob(dir_path + '/../../data/input_signals/*.csv')
     list_of_files = sorted(list_of_files)
-    list_of_files.reverse()
     path = list_of_files[0]
     print("Opening: ",path)
 

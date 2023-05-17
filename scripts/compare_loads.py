@@ -9,7 +9,7 @@ from scipy import signal
 def main():
     # Get all datasets
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/experiments/compare/step/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/experiments/compare/mixd/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
 
@@ -56,7 +56,7 @@ def main():
     fig,ax=plt.subplots()
     ax.plot(times[0],setpoints[0],"--")
     for i in range(len(positions)):
-        ax.plot(times[i],torques[i])
+        ax.plot(times[i],positions[i])
     # ax.plot(lags,corr)
     ax.axhline(y=0, color='k')
     ax.set_xlabel("Time [ms]")

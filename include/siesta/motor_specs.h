@@ -10,7 +10,7 @@
 #define PROTOCOL_VERSION        2.0 
 
 // Default setting
-#define DXL1_ID                 100
+#define DXL1_ID                 101
 #define BAUDRATE                3000000
 #define DEVICE_NAME             "/dev/ttyUSB0"
 

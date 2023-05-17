@@ -12,7 +12,8 @@ namespace experiment_parameters {
 
     int SMPL_FREQ = 400;
     
-    enum INPUT_TYPES {STEP,CHRP,FLIT,MIXD,NOIS, N_INPUT_TYPES};
+    enum INPUT_TYPES {STEP,RAMP,CHRP,FLIT,NOIS,MIXD, N_INPUT_TYPES};
+    const char* input_types_strings [] = {"step","ramp","chrp","flit","nois","mixd"};
     int INPUT_TYPE = STEP; 
 
     const std::string setpoint_topic_ = "set_position";
