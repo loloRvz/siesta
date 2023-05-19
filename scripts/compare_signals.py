@@ -9,7 +9,7 @@ from scipy import signal
 def main():
     # Get all datasets
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/experiments/compare/mixd/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/experiments/compare/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
 
@@ -42,12 +42,12 @@ def main():
 
         # Get start lag
         lag += times[i][0] - times[0][0]
-        
-        times[i] -= lag
+
+        #times[i] -= lag
         print(lag, " seconds")
 
-    times[1] -= -0.07
-    times[2] -= -0.07
+    times[1] -= 0
+    times[2] -= 0
 
     # corr = signal.correlate(setpoints[2], setpoints[0], mode='full')
     # lags = signal.correlation_lags(len(setpoints[2]), len(setpoints[0]), mode='full')

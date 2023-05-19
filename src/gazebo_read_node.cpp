@@ -96,7 +96,7 @@ int main(int argc, char ** argv) {
 			  "acceleration_computed[rad/s^2] \n"; // Set column descriptions
 
 	// Wait for first setpoint topic to be published
-	ros::topic::waitForMessage<mav_msgs::Actuators>(setpoint_topic_,ros::Duration(5));
+	ros::topic::waitForMessage<mav_msgs::Actuators>("/stork/command/motor_speed",ros::Duration(5));
 
 	// Time variables
 	ros::Time t_start = ros::Time::now();

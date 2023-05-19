@@ -70,6 +70,9 @@ int main(int argc, char ** argv) {
 		return 0;
 	}
 
+	// Wait for gazebo startup
+	ros::topic::waitForMessage<mav_msgs::Actuators>("/stork/gazebo/motor_states",ros::Duration(10));
+
 	ros::Rate rate(CTRL_FREQ);
 	ROS_INFO("Publishing input...");
 	while(ros::ok()){

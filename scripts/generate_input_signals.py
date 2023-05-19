@@ -85,7 +85,7 @@ def main():
     mixd_inputs = np.zeros(inputs_array.shape[0])
     seg_size = MIXD_INTERVAL*CTRL_FREQ
 
-    m = 5
+    m = 4
     arr = np.zeros((seg_size,m))
 
     n = 0

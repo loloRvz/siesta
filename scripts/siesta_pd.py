@@ -47,13 +47,6 @@ MOTOR_FRICTIONS = np.array([5e-3, \
 K_TI = 1 # T = K_TI * I
 
 
-def ode_func(t,w,data,k,J,b):
-    i_t = interp1d(data[:,TIME], data[:,CURRENT]/1000)
-    # compute acceleration
-    dwdt = k/J * i_t(t) - b/J * w
-    return dwdt
-
-
 ### CLASSES ###
 
 # dataset definition
@@ -89,35 +82,6 @@ class CSVDataset(Dataset):
         if np.sum(np.isnan(data[:,ACCELERATION_COMP])) > 1 or resave:
             data[:,ACCELERATION_COMP] = fd.d(data[:,VELOCITY_COMP],data[:,TIME])
             resave = True
-
-        #Integrate current (torque) to get velocity
-        # print("Integrating velocity from current...")
-        # # Find velocity values close to zeros
-        # eps = 0.1
-        # v_is_nill = np.logical_and(data[:,VELOCITY_COMP] <= eps, data[:,VELOCITY_COMP] >= -eps)
-
-        # # Integrate between those values
-        # idx1 = 0
-        # for i,v in np.ndenumerate(v_is_nill):
-        #     if i[0] == 0:
-        #         data[0,VELOCITY_INT] = 0
-        #         continue
-
-        #     if i[0] == len(v_is_nill)-1:
-        #         print(i[0])
-        #         v = True
-
-        #     if v:
-        #         idx2 = i[0]
-        #         sol = solve_ivp(ode_func,(data[idx1,TIME],data[idx2,TIME]),[0], \
-        #             method="RK23", \
-        #             t_eval = data[idx1:idx2,TIME], \
-        #             args=(data,K_TI,LOAD_INERTIAS[self.load_id],MOTOR_FRICTIONS[self.load_id]))
-        #         data[idx1:idx2,VELOCITY_INT] = sol.y
-        #         idx1 = idx2
-
-        # data[idx2,VELOCITY_INT] = 0
-        # resave = True
         
         # Save dataframe to csv if velocity or acceleration computed
         if resave:
@@ -162,31 +126,23 @@ class CSVDataset(Dataset):
         plt.show()
 
     # prepare inputs and labels for learning process
-    def prepare_data(self,hist_len,T_via, freq=400):
+    def prepare_data(self,T_via):
         data = self.df.to_numpy(dtype=np.float64)
-        self.X = np.resize(self.X,(data.shape[0],hist_len))
+        self.X = np.resize(self.X,(data.shape[0],2))
 
-        # Get position error (setpoint-position)
+        # Get position errors (P)
         position_error = data[:,SETPOINT] - data[:,POSITION]
-        velocity = data[:,VELOCITY_COMP]
+        self.X[:,0] = position_error
 
-        n = 1
-
-        #Get position error history
-        for i in range(hist_len):
-            self.X[:,i] = np.roll(position_error, n*i)
-            self.X[:n*i,i] = np.nan
-        self.X = self.X[n*(hist_len-1):,:] #Cut out t<0
+        # Get position error derivatives (D)
+        fd = SavitzkyGolay(left=2, right=2, order=1, iwindow=True)
+        self.X[:,1] = fd.d(position_error,data[:,TIME])
 
         # Compute torque depending on load inertia (declared in filename)
         if T_via == 'a':
             self.y = data[:,ACCELERATION_COMP]*LOAD_INERTIAS[self.load_id]
         else:
             self.y = data[:,CURRENT] / 1000 * K_TI
-        self.y = self.y[n*(hist_len-1):] #Cut out t<0
-
-        # Get corresponding times
-        self.t = data[n*(hist_len-1):,TIME]#Cut out t<0
 
     # get indexes for train and test rows
     def get_splits(self, n_test=0.1):
@@ -213,25 +169,12 @@ class CSVDataset(Dataset):
 # model definition
 class MLP(Module):
     # define model elements
-    def __init__(self, n_inputs, n_outputs, dev, layerDim):
+    def __init__(self, n_inputs, n_outputs, dev):
         super(MLP, self).__init__()
         self.dev = dev
         # input to first hidden layer
-        self.hidden1 = Linear(n_inputs, layerDim).to(self.dev)
+        self.hidden1 = Linear(n_inputs, n_outputs).to(self.dev)
         xavier_uniform_(self.hidden1.weight).to(self.dev)
-        self.act1 = Softsign().to(self.dev)
-        # second hidden layer
-        self.hidden2 = Linear(layerDim, layerDim).to(self.dev)
-        xavier_uniform_(self.hidden2.weight).to(self.dev)
-        self.act2 = Softsign().to(self.dev)
-        # third hidden layer
-        self.hidden3 = Linear(layerDim, layerDim).to(self.dev)
-        xavier_uniform_(self.hidden3.weight).to(self.dev)
-        self.act3 = Softsign().to(self.dev)
-        # output
-        self.hidden4 = Linear(layerDim, n_outputs).to(self.dev)
-        xavier_uniform_(self.hidden4.weight).to(self.dev)
-        
         self.to(torch.float64)
 
     # forward propagate input
@@ -239,15 +182,6 @@ class MLP(Module):
         # input to first hidden layer
         X = X.to(self.dev)
         X = self.hidden1(X)
-        X = self.act1(X)
-        # second hidden layer
-        X = self.hidden2(X)
-        X = self.act2(X)
-        # third hidden layer
-        X = self.hidden3(X)
-        X = self.act3(X)
-        # fifth hidden layer and output
-        X = self.hidden4(X)
         return X
 
 
@@ -312,6 +246,8 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
             epoch = epoch + 1
     except KeyboardInterrupt:
         print('interrupted!')
+        for param in model.parameters():
+            print(param.data)
 
 # evaluate model
 def evaluate_model(test_dl, model):
@@ -373,7 +309,6 @@ def main():
         print("Using CPU D:")
 
     # Model parameters
-    h_len = 8
     T_via = 'a'
 
     # Open training dataset
@@ -387,16 +322,16 @@ def main():
     # Prepare dataset
     dataset = CSVDataset(path)
     dataset.preprocess()
-    dataset.prepare_data(hist_len=h_len, T_via = T_via)
+    dataset.prepare_data(T_via = T_via)
     train_dl, test_dl = dataset.get_splits(n_test=0.1) # Get data loaders
 
     # Make dir for model
-    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len).zfill(2)+"_T"+T_via
+    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PD_T"+T_via
     print("Opening directory: ",model_dir)
     os.makedirs(model_dir, exist_ok=True)
 
     # Train model
-    model = MLP(h_len, 1, dev, 32)
+    model = MLP(2, 1, dev)
     model.to(torch.float64)
     train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
 
