@@ -72,14 +72,13 @@ class CSVDataset(Dataset):
         print("Load inertia: ", LOAD_INERTIAS[self.load_id])
         
     # preprocess data (compute velocities and accelerations)
-    def preprocess(self):
+    def preprocess(self, resave=False):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
         fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
         #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
 
-        resave = False
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME])
@@ -381,7 +380,7 @@ def main():
     list_of_files = glob.glob(dir_path + '/../data/experiments/training/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[0]
+    path = list_of_files[2]
     print("Opening: ",path)
 
     # Prepare dataset

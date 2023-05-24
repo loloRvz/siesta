@@ -141,7 +141,7 @@ def main():
     list_of_files = glob.glob(dir_path + '/../data/experiments/training/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[0]
+    path = list_of_files[2]
     print("Opening: ",path)
 
     # Prepare dataset
@@ -149,11 +149,12 @@ def main():
     dataset.preprocess()
     dataset.prepare_data(T_via = T_via)
 
-    N = 1000
+    N1 = 1500
+    N2 = 2500
 
     data = dataset.df.to_numpy(dtype=np.float64)
-    te = tfest.tfest(data[:N,SETPOINT] - data[:N,POSITION],data[:N,POSITION])
-    te.estimate(1,2, method="fft", time=60)
+    te = tfest.tfest(dataset.X[N1:N2,0],dataset.y[N1:N2])
+    te.estimate(1,0, method="fft", time=60)
     print(te.get_transfer_function())
 
 

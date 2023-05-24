@@ -135,7 +135,7 @@ class CSVDataset(Dataset):
         self.X[:,0] = position_error
 
         # Get position error derivatives (D)
-        fd = SavitzkyGolay(left=2, right=2, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=1, right=0, order=1, iwindow=True)
         self.X[:,1] = fd.d(position_error,data[:,TIME])
 
         # Compute torque depending on load inertia (declared in filename)
@@ -173,7 +173,7 @@ class MLP(Module):
         super(MLP, self).__init__()
         self.dev = dev
         # input to first hidden layer
-        self.hidden1 = Linear(n_inputs, n_outputs).to(self.dev)
+        self.hidden1 = Linear(n_inputs, n_outputs, bias=False).to(self.dev)
         xavier_uniform_(self.hidden1.weight).to(self.dev)
         self.to(torch.float64)
 
@@ -236,6 +236,8 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
             
             if epoch % 10 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
+                for param in model.parameters():
+                    print(param.data)
             if epoch % 100 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
@@ -333,6 +335,7 @@ def main():
     # Train model
     model = MLP(2, 1, dev)
     model.to(torch.float64)
+    print(model)
     train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
 
     # Evaluate model

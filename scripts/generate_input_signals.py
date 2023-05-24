@@ -37,6 +37,8 @@ FLIT_FILE = "23-02-08--21-26-11_ID5.csv"
 # Mixed input containing all types of data input
 MIXD_INTERVAL = 3  # [s]
 
+STEP, RAMP, CHRP, FLIT, NOIS, MIXD = range(6)
+
 
 ## FUNCTIONS ##
 def chirp_signal(time):
@@ -67,7 +69,7 @@ def main():
     df["chrp"] = pd.DataFrame(chrp_inputs)
 
     # Parse flight data setpoints
-    flit_data_path = dir_path + "/../data/flight_data/23-02-08--21-01-11_ID5.csv"
+    flit_data_path = dir_path + "/../data/flight_data/normal.csv"
     flit_df = pd.read_csv(flit_data_path)
     flit_inputs = flit_df["setpoint[rad]"].to_numpy()[10000:] # remove first 10'000 data points (avoid constant input)
     n_repeat = math.floor(DATA_LENGTH*CTRL_FREQ / flit_inputs.size ) + 1
@@ -85,15 +87,17 @@ def main():
     mixd_inputs = np.zeros(inputs_array.shape[0])
     seg_size = MIXD_INTERVAL*CTRL_FREQ
 
-    m = 4
-    arr = np.zeros((seg_size,m))
+    # Choose which type of input signals to include in mix
+    mix = [STEP,CHRP,FLIT]
+    m = len(mix)
 
+    arr = np.zeros((seg_size,m))
     n = 0
     while n < DATA_LENGTH*CTRL_FREQ:
         # This works for some reason, don't touch
         for i in range(m):
             if n+i*seg_size < DATA_LENGTH*CTRL_FREQ:
-                arr[:,i] = np.resize( inputs_array[n+i*seg_size:n+(i+1)*seg_size,i] , arr[:,i].shape )
+                arr[:,i] = np.resize( inputs_array[n+i*seg_size:n+(i+1)*seg_size,mix[i]] , arr[:,i].shape )
         mixd_inputs[n:n+m*seg_size] = np.resize( np.transpose(arr).reshape((1,-1)), mixd_inputs[n:n+m*seg_size].shape )
         n = n + m*seg_size
     df["mixd"] = pd.DataFrame(mixd_inputs)
@@ -102,8 +106,8 @@ def main():
 
     print("Computed inputs:")
     print(df)
-    #df.plot()
-    #plt.show()
+    # df.plot()
+    # plt.show()
 
     # Write dataframe to csv file
     df.to_csv(dir_path + "/../data/input_signals/signals.csv", index=False)
