@@ -25,13 +25,13 @@ def main():
         # Loop through all 6 servomotors
         for motor_id in range(6,12):
             # Name for csv file
-            csv_path = dir_path + '/../data_flight/' + os.path.basename(bag_path)[2:10] + "--" + os.path.basename(bag_path)[11:-4] + "_ID" + str(motor_id-6) + ".csv"
+            csv_path = dir_path + '/../../data/flight_data/' + os.path.basename(bag_path)[2:10] + "--" + os.path.basename(bag_path)[11:-4] + "_ID" + str(motor_id-6) + "_L0069.csv"
             # Open csv
             with open(csv_path, 'w', newline='') as file:
                 writer = csv.writer(file)
                 # Write header row
                 writer.writerow(["time[ms]","setpoint[rad]","position[rad]","velocity[rad/s]","current[mA]","velocity_computed[rad/s]","acceleration_computed[rad/s^2]"])
-                for topic, msg, t in bag.read_messages(topics=['/stork/uav_state']):
+                for topic, msg, t in bag.read_messages(topics=['/quail/uav_state']):
                     # Write one msg info to csv
                     writer.writerow([( \
                         msg.header.stamp.to_sec()-start_time)*1000, \
