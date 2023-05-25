@@ -20,14 +20,14 @@ using namespace experiment_parameters;
 class PositionSetter{
 	public:
 		void setPointCallback(std_msgs::Float32 msg) {
-			set_point = msg.data + ZERO_OFFSET_RAD;
+			set_point = msg.data;
 		}
 		double getSetPoint() {
-			return set_point - ZERO_OFFSET_RAD;
+			return set_point;
 		}
 
 	private:
-		double set_point = ZERO_OFFSET_RAD;
+		double set_point = 0;
 };
 
 
@@ -99,8 +99,8 @@ int main(int argc, char ** argv) {
 		// Write data to csv file
 		sprintf(data_str, "%10.6f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f\n",
 			duration_cast<microseconds>(t_now - t_start).count()/1e6,
-			readBackStatus[0].setpoint - ZERO_OFFSET_RAD, 
-			readBackStatus[0].position - ZERO_OFFSET_RAD,
+			readBackStatus[0].setpoint, 
+			readBackStatus[0].position,
 			readBackStatus[0].current,
 			NAN,
 			NAN);

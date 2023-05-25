@@ -26,5 +26,8 @@ namespace experiment_parameters {
         nh.getParam("input_type",          INPUT_TYPE);
     }
 
+    // Drone Setup
+    float ZERO_OFFSET_RAD = -1.65;
+
 }
 #endif

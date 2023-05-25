@@ -9,9 +9,9 @@ from scipy import signal
 def main():
     # Get all datasets
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/experiments/compare/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/experiments/compare/5-mixd/*.csv')
     list_of_files = sorted(list_of_files)
-    list_of_files.reverse()
+    #list_of_files.reverse()
 
 
     # Load data from files
