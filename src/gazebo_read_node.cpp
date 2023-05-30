@@ -64,7 +64,7 @@ int main(int argc, char ** argv) {
 	time_t curr_time; 
 	tm * curr_tm;
 	char file_str[100], time_str[100], exprmt_descr_str[100], data_str[100];
-	strcpy(file_str, "/home/lolo/omav_ws/src/siesta/data/experiments/gazebo/"); //Global path
+	strcpy(file_str, "/home/lolo/omav_ws/src/siesta/data/measurements_quail_gazebo/"); //Global path
 	time(&curr_time);
 	curr_tm = localtime(&curr_time);
 	strftime(time_str, 100, "%y-%m-%d--%H-%M-%S_", curr_tm);

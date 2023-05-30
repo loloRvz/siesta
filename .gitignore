@@ -55,6 +55,10 @@ CATKIN_IGNORE
 data/input_signals/old/*.csv
 data/flight_data/saved/*.csv
 data/measurements_quail/*
+data/measurements_quail_gazebo/*
+
+data/models/*
+!data/model/saved/
 
 scripts/__pycache__/
 scripts/runs/

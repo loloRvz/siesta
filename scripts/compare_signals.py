@@ -9,7 +9,7 @@ from scipy import signal
 def main():
     # Get all datasets
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/experiments/compare/5-mixd/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/evaluation/0-step/*.csv')
     list_of_files = sorted(list_of_files)
     #list_of_files.reverse()
 
