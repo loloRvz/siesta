@@ -52,10 +52,9 @@ CATKIN_IGNORE
 
 # Measured data
 # data/experiments/*.csv
-data/input_signals/*.csv
+data/input_signals/old/*.csv
 data/flight_data/saved/*.csv
-data/models/*
-data/experiments/*
+data/measurements_quail/*
 
 scripts/__pycache__/
 scripts/runs/

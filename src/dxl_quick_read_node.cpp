@@ -5,7 +5,6 @@
 #include <ctime>
 #include <math.h>
 
-#include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
 #include "omav_hovery_interface/ll/dynamixel_motor_adapter.h"
 #include "omav_hovery_interface/ll/polling_thread.h"
@@ -46,8 +45,9 @@ int main(int argc, char ** argv) {
 	// Declare motors & interfaces
 	std::array<int, 1> dynamixels = {DXL1_ID};
 	std::array<double, 1> setPointAngle{M_PI};
+	std::array<double, 1> offsets{-1.636};
 	omV::ll::MotorInterface<_POS>::MotorStatusArray readBackStatus;
-	omV::ll::DynamixelMotorAdapter<_POS> ta_adapter(DEVICE_NAME, BAUDRATE, dynamixels);
+	omV::ll::DynamixelMotorAdapter<_POS> ta_adapter(DEVICE_NAME, BAUDRATE, dynamixels, offsets);
 
 	// Init motor
 	ta_adapter.open();
@@ -57,7 +57,7 @@ int main(int argc, char ** argv) {
 	time_t curr_time; 
 	tm * curr_tm;
 	char file_str[100], time_str[100], exprmt_descr_str[100], data_str[100];
-	strcpy(file_str, "/home/lolo/omav_ws/src/siesta/data/experiments/training/"); //Global path
+	strcpy(file_str, "/home/lolo/omav_ws/src/siesta/data/measurements_quail/"); //Global path
 	time(&curr_time);
 	curr_tm = localtime(&curr_time);
 	strftime(time_str, 100, "%y-%m-%d--%H-%M-%S_", curr_tm);

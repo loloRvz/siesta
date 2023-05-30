@@ -5,7 +5,6 @@
 #include <fstream>
 #include <vector> 
 
-#include "std_msgs/String.h"
 #include "std_msgs/Float32.h"
 
 #include "experiment_parameters.h"

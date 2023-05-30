@@ -301,7 +301,7 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
             
             if epoch % 10 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
-            if epoch % 100 == 0 and epoch != 0:
+            if epoch % 250 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
                 model_scripted.double()
@@ -377,10 +377,10 @@ def main():
 
     # Open training dataset
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/experiments/training/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/training/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[2]
+    path = list_of_files[0]
     print("Opening: ",path)
 
     # Prepare dataset
@@ -402,7 +402,6 @@ def main():
     # Evaluate model
     mse,std = evaluate_model(test_dl, model)
     print('MSE: %.3f, RMSE: %.3f, STD: %.3f' % (mse, np.sqrt(mse), std))
-    #plot_model_predictions(dataset, model)
 
 
 
