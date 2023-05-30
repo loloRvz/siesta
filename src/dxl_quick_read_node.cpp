@@ -99,8 +99,8 @@ int main(int argc, char ** argv) {
 		// Write data to csv file
 		sprintf(data_str, "%10.6f,%07.5f,%06.3f,%08.2f,%03.3f,%03.3f\n",
 			duration_cast<microseconds>(t_now - t_start).count()/1e6,
-			readBackStatus[0].setpoint, 
-			readBackStatus[0].position - offsets[0],
+			readBackStatus[0].setpoint - offsets[0], 
+			readBackStatus[0].position,
 			readBackStatus[0].current,
 			NAN,
 			NAN);
