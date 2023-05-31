@@ -9,6 +9,7 @@ from derivative import SavitzkyGolay
 from torch.utils.data import Dataset
 
 import tfest
+from scipy.signal import lsim,TransferFunction
 
 
 # Data columns
@@ -141,22 +142,53 @@ def main():
     list_of_files = glob.glob(dir_path + '/../data/training/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[0]
+    path = list_of_files[1]
     print("Opening: ",path)
 
     # Prepare dataset
     dataset = CSVDataset(path)
     dataset.preprocess()
     dataset.prepare_data(T_via = T_via)
-
-    N1 = 1500
-    N2 = 2500
-
     data = dataset.df.to_numpy(dtype=np.float64)
-    te = tfest.tfest(dataset.X[N1:N2,0],dataset.y[N1:N2])
-    te.estimate(1,0, method="fft", time=60)
-    print(te.get_transfer_function())
 
+    # N1 = 1000
+    # N2 = 4000
+    # te = tfest.tfest(data[N1:N2,SETPOINT]-data[N1:N2,POSITION], data[N1:N2,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id] ) 
+    # te.estimate(1,0, method="fft", time=60)
+    # print(te.get_transfer_function())
+
+    # J = 287e-6
+    # num = [0.015, 0.025]
+    # den = [J, 0, 0]
+    # tout, yout, xout = lsim(TransferFunction(num, den), data[:N,SETPOINT]-data[:N,POSITION], data[:N,TIME])
+
+    pos_err = np.subtract(data[:,SETPOINT],data[:,POSITION])
+    fd = SavitzkyGolay(left=5, right=5, order=1, iwindow=True)
+    pos_err_d = fd.d(pos_err,data[:,TIME])
+    A = np.transpose(np.stack((pos_err, pos_err_d)))
+    trq = data[:,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id]
+
+    Ks = np.linalg.lstsq( A, trq, rcond=None)[0]
+    print(Ks)
+
+    predicted_torques = np.matmul(A, Ks)
+
+
+    plot = True
+    if plot:
+        # Plot validation dataset to time
+        fig,ax=plt.subplots()
+        ax.plot(data[:,TIME],data[:,SETPOINT])
+        ax.plot(data[:,TIME],data[:,POSITION])
+        ax.plot(data[:,TIME],data[:,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id])
+        ax.plot(data[:,TIME],predicted_torques)
+        # ax.plot(data[:,TIME],pos_err)
+        # ax.plot(data[:,TIME],pos_err_d/10)
+        ax.set_xlabel("Time [ms]")
+        ax.set_ylabel("Amplitude")
+        ax.axhline(y=0, color='k')
+        ax.legend(["Setpoint [rad]","Position [rad]","Measured torque [Nm]","Predicted torque [Nm]","pos_err","pos_err_d"])
+        plt.show()
 
 
 

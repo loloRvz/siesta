@@ -13,7 +13,7 @@
   <arg name="model" default="$(find mav_omav)/launch/simulation/urdf/stork.xacro" />
   <arg name="world_name" default="force_trajectories" />
   <arg name="debug" default="false" />
-  <arg name="gui" default="true" />
+  <arg name="gui" default="false" />
   <arg name="paused" default="false" />
   <arg name="verbose" default="false" />
   <arg name="use_normal_estimation" default="false" />
@@ -187,12 +187,12 @@
     </group>
 
     <!-- ***** GUI ***** -->
-    <node pkg="omav_gui" name="omav_gui" type="omav_gui.py" output="screen">
+    <!--node pkg="omav_gui" name="omav_gui" type="omav_gui.py" output="screen">
       <param name="allow_arming" value="true" />
-    </node>
+    </node-->
 
     <!-- ***** RQT ***** -->
-    <node name="rqt_reconfig" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen" />
+    <!--node name="rqt_reconfig" pkg="rqt_reconfigure" type="rqt_reconfigure" output="screen" /-->
 
   </group>  <!-- ns="$(arg mav_name)" -->
 
