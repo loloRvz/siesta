@@ -52,14 +52,13 @@ class CSVDataset(Dataset):
         print("Load inertia: ", LOAD_INERTIAS[self.load_id])
         
     # preprocess data (compute velocities and accelerations)
-    def preprocess(self):
+    def preprocess(self, resave=False):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
         fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
         #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
 
-        resave = False
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
             data[:,VELOCITY_COMP] = fd.d(data[:,POSITION],data[:,TIME])
@@ -147,31 +146,28 @@ def main():
 
     # Prepare dataset
     dataset = CSVDataset(path)
-    dataset.preprocess()
+    dataset.preprocess(resave=False)
     dataset.prepare_data(T_via = T_via)
     data = dataset.df.to_numpy(dtype=np.float64)
 
-    # N1 = 1000
-    # N2 = 4000
-    # te = tfest.tfest(data[N1:N2,SETPOINT]-data[N1:N2,POSITION], data[N1:N2,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id] ) 
-    # te.estimate(1,0, method="fft", time=60)
-    # print(te.get_transfer_function())
+    # Least squares
+    A = np.transpose(np.stack((data[:,SETPOINT]-data[:,POSITION], data[:,VELOCITY_COMP])))
+    trq = data[:,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id]
+    Ks = np.linalg.lstsq( A, trq, rcond=None)[0]
+    print("Least squares",Ks)
+    predicted_torques = np.matmul(A, Ks)
+
+    # SysID
+    N1 = 1000
+    N2 = 4000
+    te = tfest.tfest(data[N1:N2,SETPOINT]-data[N1:N2,POSITION], data[N1:N2,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id] ) 
+    te.estimate(0,2, method="fft", time=60)
+    print(te.get_transfer_function())
 
     # J = 287e-6
     # num = [0.015, 0.025]
     # den = [J, 0, 0]
     # tout, yout, xout = lsim(TransferFunction(num, den), data[:N,SETPOINT]-data[:N,POSITION], data[:N,TIME])
-
-    pos_err = np.subtract(data[:,SETPOINT],data[:,POSITION])
-    fd = SavitzkyGolay(left=5, right=5, order=1, iwindow=True)
-    pos_err_d = fd.d(pos_err,data[:,TIME])
-    A = np.transpose(np.stack((pos_err, pos_err_d)))
-    trq = data[:,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id]
-
-    Ks = np.linalg.lstsq( A, trq, rcond=None)[0]
-    print(Ks)
-
-    predicted_torques = np.matmul(A, Ks)
 
 
     plot = True
@@ -182,8 +178,6 @@ def main():
         ax.plot(data[:,TIME],data[:,POSITION])
         ax.plot(data[:,TIME],data[:,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id])
         ax.plot(data[:,TIME],predicted_torques)
-        # ax.plot(data[:,TIME],pos_err)
-        # ax.plot(data[:,TIME],pos_err_d/10)
         ax.set_xlabel("Time [ms]")
         ax.set_ylabel("Amplitude")
         ax.axhline(y=0, color='k')

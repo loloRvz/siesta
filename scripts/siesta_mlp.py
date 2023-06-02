@@ -228,7 +228,7 @@ class MLP(Module):
         xavier_uniform_(self.hidden3.weight).to(self.dev)
         self.act3 = Softsign().to(self.dev)
         # output
-        self.hidden4 = Linear(layerDim, n_outputs).to(self.dev)
+        self.hidden4 = Linear(layerDim, n_outputs, bias=False).to(self.dev)
         xavier_uniform_(self.hidden4.weight).to(self.dev)
         
         self.to(torch.float64)
@@ -380,7 +380,7 @@ def main():
     list_of_files = glob.glob(dir_path + '/../data/training/*.csv')
     list_of_files = sorted(list_of_files)
     list_of_files.reverse()
-    path = list_of_files[0]
+    path = list_of_files[1]
     print("Opening: ",path)
 
     # Prepare dataset
