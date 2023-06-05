@@ -34,35 +34,46 @@ def main():
         torques.append(data[:,ACCELERATION_COMP] * LOAD_INERTIAS[dataset.load_id])
 
 
-    # Compute difference to measurements
+    # Sync measurements times
     min_time = min([times_arr[-1] for times_arr in times])
-
 
     setpoints = [setpoints[i][min_time > times[i]]  for i in range(len(positions))]
     positions = [positions[i][min_time > times[i]]  for i in range(len(positions))]
     times = [times[i][min_time > times[i]]  for i in range(len(positions))]
 
-    print([p.shape for p in positions])
-    print([p.shape for p in times])
-
     positions_interp = [np.interp(times[0], times[i], positions[i]) for i in range(len(positions))]
-
+    setpoints_interp = [np.interp(times[0], times[i], setpoints[i]) for i in range(len(setpoints))]
 
     rmse = [mean_squared_error(positions_interp[0], p) for p in positions_interp]
-    print(rmse)
-    
+    rmse_set = [mean_squared_error(setpoints[0], s) for s in setpoints_interp]
+    print("RMSE")
+    print("Real system ",rmse[0], "(",rmse_set[0],")")
+    print("PD Model DAM",rmse[1], "(",rmse_set[1],")")
+    print("NN Model PEH",rmse[2], "(",rmse_set[2],")")
+    print("NN Model PH ",rmse[3], "(",rmse_set[3],")")
+
+    signals = ["Setpoint","Real system","PD Model","NN Model Position Error Hist.","NN Model Position History"]
 
     # Plot signals
-    fig,ax=plt.subplots()
-    ax.plot(times[0],setpoints[0],"--")
+    plt.figure(1,figsize=(7,5))
+    plt.plot(times[0],setpoints[0],"--")
     for i in range(len(positions)):
-        ax.plot(times[0],positions_interp[i])
-    ax.axhline(y=0, color='k')
-    ax.set_xlabel("Time [ms]")
-    ax.set_ylabel("Amplitude [rad]")
-    ax.legend(["Setpoint","Real system","PD Model","NN Model Position Error Hist.","NN Model Position History"])                       
+        plt.plot(times[0],positions_interp[i])
+    plt.axhline(y=0, color='k')
+    plt.xlabel("Time [ms]")
+    plt.ylabel("Amplitude [rad]")
+    plt.legend(signals)                       
     plt.title("Position control comparison")
+
+    plt.figure(2,figsize=(7,5))
+    plt.bar(signals[2:], rmse[1:],width = 0.5)
+    plt.xlabel("Model")
+    plt.ylabel("RMSE")
+    plt.title("Model evaluation")
+    
     plt.show()
+
+
 
 
 if __name__ == "__main__":
