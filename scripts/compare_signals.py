@@ -9,7 +9,7 @@ from scipy import signal
 def main():
     # Get all datasets
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    list_of_files = glob.glob(dir_path + '/../data/evaluation/5-mixd/*.csv')
+    list_of_files = glob.glob(dir_path + '/../data/evaluation/0-step/*.csv')
     list_of_files = sorted(list_of_files)
     #list_of_files.reverse()
     
@@ -35,9 +35,20 @@ def main():
 
 
     # Compute difference to measurements
-    min_len = min([pos_arr.size for pos_arr in positions])
-    positions_equ = [pos_arr[:min_len] for pos_arr in positions]
-    rmse = [mean_squared_error(positions_equ[0], p) for p in positions_equ]
+    min_time = min([times_arr[-1] for times_arr in times])
+
+
+    setpoints = [setpoints[i][min_time > times[i]]  for i in range(len(positions))]
+    positions = [positions[i][min_time > times[i]]  for i in range(len(positions))]
+    times = [times[i][min_time > times[i]]  for i in range(len(positions))]
+
+    print([p.shape for p in positions])
+    print([p.shape for p in times])
+
+    positions_interp = [np.interp(times[0], times[i], positions[i]) for i in range(len(positions))]
+
+
+    rmse = [mean_squared_error(positions_interp[0], p) for p in positions_interp]
     print(rmse)
     
 
@@ -45,11 +56,11 @@ def main():
     fig,ax=plt.subplots()
     ax.plot(times[0],setpoints[0],"--")
     for i in range(len(positions)):
-        ax.plot(times[i],positions[i])
+        ax.plot(times[0],positions_interp[i])
     ax.axhline(y=0, color='k')
     ax.set_xlabel("Time [ms]")
     ax.set_ylabel("Amplitude [rad]")
-    ax.legend(["Setpoint","Real system","PD Model","Trained NN Model"])                       
+    ax.legend(["Setpoint","Real system","PD Model","NN Model Position Error Hist.","NN Model Position History"])                       
     plt.title("Position control comparison")
     plt.show()
 

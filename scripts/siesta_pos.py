@@ -165,16 +165,13 @@ class CSVDataset(Dataset):
         data = self.df.to_numpy(dtype=np.float64)
         self.X = np.resize(self.X,(data.shape[0],hist_len))
 
-        # Get position error (setpoint-position)
-        position_error = data[:,SETPOINT] - data[:,POSITION]
-        velocity = data[:,VELOCITY_COMP]
-
         n = 1
 
         #Get position error history
-        for i in range(hist_len):
-            self.X[:,i] = np.roll(position_error, n*i)
+        for i in range(hist_len-1):
+            self.X[:,i] = np.roll(data[:,POSITION], n*i)
             self.X[:n*i,i] = np.nan
+        self.X[:,hist_len-1] = data[:,SETPOINT] - data[:,POSITION]
         self.X = self.X[n*(hist_len-1):,:] #Cut out t<0
 
         # Compute torque depending on load inertia (declared in filename)
@@ -385,12 +382,12 @@ def main():
 
     # Prepare dataset
     dataset = CSVDataset(path)
-    dataset.preprocess()
+    dataset.preprocess(resave=True)
     dataset.prepare_data(hist_len=h_len, T_via = T_via)
     train_dl, test_dl = dataset.get_splits(n_test=0.1) # Get data loaders
 
     # Make dir for model
-    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len).zfill(2)+"_T"+T_via
+    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-POS"+str(h_len).zfill(2)+"_T"+T_via
     print("Opening directory: ",model_dir)
     os.makedirs(model_dir, exist_ok=True)
 

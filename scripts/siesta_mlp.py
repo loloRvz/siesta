@@ -76,7 +76,7 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
+        fd = SavitzkyGolay(left=2, right=2, order=1, iwindow=True)
         #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
 
         # Compute velocity from position 
@@ -228,7 +228,7 @@ class MLP(Module):
         xavier_uniform_(self.hidden3.weight).to(self.dev)
         self.act3 = Softsign().to(self.dev)
         # output
-        self.hidden4 = Linear(layerDim, n_outputs, bias=False).to(self.dev)
+        self.hidden4 = Linear(layerDim, n_outputs).to(self.dev)
         xavier_uniform_(self.hidden4.weight).to(self.dev)
         
         self.to(torch.float64)
@@ -385,7 +385,7 @@ def main():
 
     # Prepare dataset
     dataset = CSVDataset(path)
-    dataset.preprocess()
+    dataset.preprocess(resave=True)
     dataset.prepare_data(hist_len=h_len, T_via = T_via)
     train_dl, test_dl = dataset.get_splits(n_test=0.1) # Get data loaders
 

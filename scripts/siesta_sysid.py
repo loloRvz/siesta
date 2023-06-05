@@ -56,8 +56,7 @@ class CSVDataset(Dataset):
         data = (self.df).to_numpy()
 
         # Compute position derivatives if necessary
-        fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
-        #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
+        fd = SavitzkyGolay(left=2, right=2, order=1, iwindow=True)
 
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
@@ -70,10 +69,10 @@ class CSVDataset(Dataset):
             resave = True
         
         # Save dataframe to csv if velocity or acceleration computed
-        if resave:
-            print("Computed derivatives. Resaving dataframe to csv...")
-            self.df = pd.DataFrame(data, columns = self.df.columns.values, dtype=np.float32)
-            self.df.to_csv(self.path, index=False)
+        # if resave:
+        #     print("Computed derivatives. Resaving dataframe to csv...")
+        #     self.df = pd.DataFrame(data, columns = self.df.columns.values, dtype=np.float32)
+        #     self.df.to_csv(self.path, index=False)
 
     # plot dataset
     def plot_data(self):
@@ -146,7 +145,7 @@ def main():
 
     # Prepare dataset
     dataset = CSVDataset(path)
-    dataset.preprocess(resave=False)
+    dataset.preprocess(resave=True)
     dataset.prepare_data(T_via = T_via)
     data = dataset.df.to_numpy(dtype=np.float64)
 
@@ -158,11 +157,11 @@ def main():
     predicted_torques = np.matmul(A, Ks)
 
     # SysID
-    N1 = 1000
-    N2 = 4000
-    te = tfest.tfest(data[N1:N2,SETPOINT]-data[N1:N2,POSITION], data[N1:N2,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id] ) 
-    te.estimate(0,2, method="fft", time=60)
-    print(te.get_transfer_function())
+    # N1 = 1000
+    # N2 = 4000
+    # te = tfest.tfest(data[N1:N2,SETPOINT]-data[N1:N2,POSITION], data[N1:N2,ACCELERATION_COMP]*LOAD_INERTIAS[dataset.load_id] ) 
+    # te.estimate(0,2, method="fft", time=60)
+    # print(te.get_transfer_function())
 
     # J = 287e-6
     # num = [0.015, 0.025]
