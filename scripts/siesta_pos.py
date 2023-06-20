@@ -77,7 +77,6 @@ class CSVDataset(Dataset):
 
         # Compute position derivatives if necessary
         fd = SavitzkyGolay(left=3, right=3, order=1, iwindow=True)
-        #fd = SavitzkyGolay(left=0.005, right=0.005, order=1, iwindow=False)
 
         # Compute velocity from position 
         if np.sum(np.isnan(data[:,VELOCITY_COMP])) > 1 or resave:
