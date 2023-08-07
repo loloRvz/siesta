@@ -18,7 +18,6 @@ def main():
     times = []
     setpoints = []
     positions = []
-    torques = []
     for path in list_of_files:
         print("Opening: ",path)
 
@@ -31,7 +30,6 @@ def main():
         times.append(data[:,TIME])
         setpoints.append(data[:,SETPOINT])
         positions.append(data[:,POSITION])
-        torques.append(data[:,ACCELERATION_COMP] * LOAD_INERTIAS[dataset.load_id])
 
 
     # Sync measurements times
@@ -47,23 +45,25 @@ def main():
     rmse = [mean_squared_error(positions_interp[0], p) for p in positions_interp]
     rmse_set = [mean_squared_error(setpoints[0], s) for s in setpoints_interp]
     print("RMSE")
-    print("Real system ",rmse[0], "(",rmse_set[0],")")
-    print("PD Model DAM",rmse[1], "(",rmse_set[1],")")
-    print("NN Model PEH",rmse[2], "(",rmse_set[2],")")
-    print("NN Model PH ",rmse[3], "(",rmse_set[3],")")
+    print("Measurement ",rmse[0], "(",rmse_set[0],")")
+    print("PD Model",rmse[1], "(",rmse_set[1],")")
+    print("NN Model",rmse[2], "(",rmse_set[2],")")
 
-    signals = ["Setpoint","Real system","PD Model","NN Model Position Error Hist.","NN Model Position History"]
+    signals = ["Setpoint","Measurement","PD Model","NN Model"]
+    #signals = ["Setpoint","Measurement","NN Model"]
 
     # Plot signals
     plt.figure(1,figsize=(7,5))
     plt.plot(times[0],setpoints[0],"--")
     for i in range(len(positions)):
-        plt.plot(times[0],positions_interp[i])
+        plt.plot(times[0],positions_interp[i],color="C"+str(i+1))
     plt.axhline(y=0, color='k')
     plt.xlabel("Time [ms]")
-    plt.ylabel("Amplitude [rad]")
+    plt.ylabel("Angle [rad]")
     plt.legend(signals)                       
-    plt.title("Position control comparison")
+    plt.title("Position Control")
+    plt.xlim([16.9,17.9])
+    plt.ylim([-0.07,0.07])
 
     plt.figure(2,figsize=(7,5))
     plt.bar(signals[2:], rmse[1:],width = 0.5)

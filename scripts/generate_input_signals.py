@@ -106,8 +106,14 @@ def main():
 
     print("Computed inputs:")
     print(df)
-    # df.plot()
-    # plt.show()
+
+    plt.figure(1,figsize=(7,5))
+    df["chrp"].plot()
+    plt.xlabel("Timestep")
+    plt.ylabel("Angle setpoint [rad]")
+    plt.xlim([1000,1500])
+    plt.ylim([-0.15,0.15])
+    plt.show()
 
     # Write dataframe to csv file
     df.to_csv(dir_path + "/../data/input_signals/signals.csv", index=False)
