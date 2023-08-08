@@ -13,13 +13,13 @@ def main():
 
     # Params
     T1 = 0          # [s]
-    T2 = 30         # [s]
+    T2 = 55         # [s]
     F = 400         # [Hz]
     N = (T2-T1)*F   # []
     START = 0    # [kRPM]
 
     # Input signal
-    input_type = STEP
+    input_type = FLIT
     input_dataset = CSVDataset("../data/input_signals/signals.csv")
     input_np = input_dataset.df.to_numpy(dtype=np.float64)
     setpoint = input_np[:N,input_type]
@@ -76,7 +76,7 @@ def main():
         position[i+1] = position[i] + velocity[i]*delta_t + 0.5*cmd*delta_t**2
 
     # Save data to arrays
-    signal_names.append("P-Controller")
+    signal_names.append("PD Model")
     times.append(time)
     setpoints.append(setpoint)
     positions.append(position)
@@ -85,7 +85,7 @@ def main():
     ### NEURAL NETWORK MODEL ###
 
     # Load pre-trained model
-    model_dirs = dir_path + "/../data/models/" + "23-05-30--14-53-36_flit-PHL05/delta_1300"
+    model_dirs = dir_path + "/../data/models/" + "23-05-30--14-53-36_flit-PHL05big/"
     list_of_models = glob.glob(model_dirs + '*.pt')
     list_of_models = sorted(list_of_models)
 
@@ -161,31 +161,33 @@ def main():
     # Plot NN models
     for i in range(1,num_signals):
         plt.plot(times[0],positions_interp[i],linewidth=1.5)
-    for i in range(1,num_signals):
-        plt.plot(times[0],errors_interp[i],"--",color="C"+str(i+1))
-    leg = ["Setpoint"]
-    leg.extend(signal_names)
+    plt.axhline(y=0, color='k')
+    # for i in range(1,num_signals):
+    #     plt.plot(times[0],errors_interp[i],"--",color="C"+str(i+1))
+    leg = ["Setpoint","Measurement","PD Model","NN Model"]
     plt.xlabel("Time [s]")
     plt.ylabel("Position [rad]")
     plt.ylim([-0.5, +0.5])
     plt.legend(leg)                         
     plt.title("Position Control")
+    plt.xlim([9.0,10.0])
+    plt.ylim([-0.07,0.07])
 
     plt.figure(2,figsize=(7,5))
     plt.plot([int(epoch[-4:]) for epoch in signal_names[2:]],rmse[2:])
     plt.hlines(rmse[1],0,int(signal_names[-1][-4:]),color="green")
-    plt.legend(["NN Models","P-Controller Simulation"])
+    plt.legend(leg[2:])
     plt.xlabel("Model Epoch")
     plt.ylabel("RMSE")
-    plt.ylim([0, 0.1])
+    plt.ylim([0, 0.005])
     plt.title("Model Performance")
 
     try:
         plt.figure(3,figsize=(2.5,5))
-        bars = (["P-Controller","NN Model"])
+        bars = (["PD Model","NN Model"])
         x_pos = [0,1]
         plt.bar(x_pos, rmse[1:], width = 0.5, align='center')
-        plt.subplots_adjust(left=0.275)
+        plt.subplots_adjust(left=0.35)
         plt.xticks(x_pos, bars)
         plt.xlabel("Model Type")
         plt.ylabel("RMSE")

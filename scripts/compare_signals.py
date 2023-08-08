@@ -62,7 +62,7 @@ def main():
     plt.ylabel("Angle [rad]")
     plt.legend(signals)                       
     plt.title("Position Control")
-    plt.xlim([16.9,17.9])
+    plt.xlim([9.0,10.0])
     plt.ylim([-0.07,0.07])
 
     plt.figure(2,figsize=(7,5))

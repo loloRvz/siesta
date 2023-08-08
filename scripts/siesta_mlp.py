@@ -168,6 +168,11 @@ class MLP(Module):
         xavier_uniform_(self.hidden2.weight).to(self.dev)
         self.act3 = Softsign().to(self.dev)
 
+        # third hidden layer
+        self.hidden3 = Linear(layerDim, layerDim).to(self.dev)
+        xavier_uniform_(self.hidden3.weight).to(self.dev)
+        self.act4 = Softsign().to(self.dev)
+
         # output
         self.output_layer = Linear(layerDim, n_outputs).to(self.dev)
         xavier_uniform_(self.output_layer.weight).to(self.dev)
@@ -185,9 +190,12 @@ class MLP(Module):
         # first hidden layer
         X = self.hidden1(X)
         X = self.act2(X)
-        # # second hidden layer
+        # second hidden layer
         X = self.hidden2(X)
         X = self.act3(X)
+        # third hidden layer
+        X = self.hidden3(X)
+        X = self.act4(X)
         # # output layer
         X = self.output_layer(X)
         # denormalise
@@ -246,13 +254,13 @@ def train_model(train_dl, test_dl, model, dev, model_dir, lr):
             
             if epoch % 10 == 0 and epoch != 0:
                 print("Epoch: ", epoch)
-            if ( (epoch < 100 and epoch % 10 == 0) or (epoch % 100 == 0) ) and epoch != 0:
+            if epoch % 10 == 0 and epoch != 0: #( (epoch < 100 and epoch % 10 == 0) or (epoch % 100 == 0) ) and epoch != 0:
                 print("Epoch: ", epoch)
                 model_scripted = torch.jit.script(model)
                 model_scripted.double()
                 model_scripted.save(model_dir +  "/delta_" + str(epoch).zfill(4) + ".pt")
-            # if epoch >= 300:
-            #     break
+            if epoch >= 2000:
+                break
             epoch = epoch + 1
     except KeyboardInterrupt:
         print('interrupted!')
@@ -334,14 +342,14 @@ def main():
     train_dl, test_dl = dataset.get_splits(n_test=0.00005) # Get data loaders
 
     # Make dir for model
-    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len).zfill(2)
+    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len).zfill(2)+"big"
     print("Opening directory: ",model_dir)
     os.makedirs(model_dir, exist_ok=True)
 
     # Train model
-    model = MLP(h_len+1, 1, dev, 32)
+    model = MLP(h_len+1, 1, dev, 64)
     model.to(torch.float64)
-    train_model(train_dl, test_dl, model, dev, model_dir, lr=0.01)
+    train_model(train_dl, test_dl, model, dev, model_dir, lr=0.00001)
 
     # Evaluate model
     mse,std = evaluate_model(test_dl, model)
