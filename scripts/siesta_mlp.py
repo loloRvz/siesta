@@ -81,15 +81,20 @@ class CSVDataset(Dataset):
         data[:,VELOCITY_COMP] /= 10
         data[:,ACCELERATION_COMP] /= 1000
 
-        fig,ax=plt.subplots()
-        #ax.plot(data[:,TIME],data[:,SETPOINT:ACCELERATION_COMP+1])
-        ax.plot(data[:,TIME],data[:,SETPOINT])
-        ax.plot(data[:,TIME],data[:,POSITION])
-        ax.axhline(y=0, color='k')
-        ax.set_xlabel("Time [s]")
-        ax.set_ylabel("Amplitude")
-        ax.legend(["Setpoint [rad]","Position [rad]"])                      
-        plt.title("Motor Measurements")
+        data[:,TIME] -= 1
+
+        plt.figure(1,figsize=(14,5))
+        plt.plot(data[:,TIME],data[:,SETPOINT],linewidth=1.5)
+        plt.plot(data[:,TIME],data[:,POSITION],linewidth=1.5)
+        plt.plot(data[:,TIME],data[:,VELOCITY_COMP])
+        plt.plot(data[:,TIME],data[:,ACCELERATION_COMP])
+        plt.axhline(y=0, color='k')
+        plt.xlabel("Time [s]")
+        plt.ylabel("Amplitude")
+        plt.legend(["Setpoint [rad]","Position [rad]","Derived Velocity [10rad/s]","Derived Acceleration [1000rad/s^2]"])                      
+        #plt.title("Motor data reading")
+        plt.ylim([-0.25,0.25])
+        plt.xlim([44,45])
 
         plt.show()
 
@@ -194,8 +199,8 @@ class MLP(Module):
         X = self.hidden2(X)
         X = self.act3(X)
         # third hidden layer
-        X = self.hidden3(X)
-        X = self.act4(X)
+        # X = self.hidden3(X)
+        # X = self.act4(X)
         # # output layer
         X = self.output_layer(X)
         # denormalise
@@ -342,14 +347,14 @@ def main():
     train_dl, test_dl = dataset.get_splits(n_test=0.00005) # Get data loaders
 
     # Make dir for model
-    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len).zfill(2)+"big"
+    model_dir = "../data/models/"+os.path.basename(path)[:-4]+"-PHL"+str(h_len).zfill(2)
     print("Opening directory: ",model_dir)
     os.makedirs(model_dir, exist_ok=True)
 
     # Train model
-    model = MLP(h_len+1, 1, dev, 64)
+    model = MLP(h_len+1, 1, dev, 32)
     model.to(torch.float64)
-    train_model(train_dl, test_dl, model, dev, model_dir, lr=0.00001)
+    train_model(train_dl, test_dl, model, dev, model_dir, lr=0.00005)
 
     # Evaluate model
     mse,std = evaluate_model(test_dl, model)

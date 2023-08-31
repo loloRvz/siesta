@@ -18,7 +18,7 @@ def main():
 
     # Prepare & plot dataset
     dataset = CSVDataset(path)
-    dataset.preprocess()
+    #dataset.preprocess()
     dataset.plot_data()
 
     data = dataset.df.to_numpy()
