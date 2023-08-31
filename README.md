@@ -63,9 +63,9 @@ The python script for training a network using experimental data is located in t
 
 ### Model evaluation
 The trained models can be integrated into gazebo and measured using:
-
+~~~
 roslaunch siesta siesta_evaluation_gazebo.launch
-
+~~~
 The measured dataset can be compared to true values with the *compare_signals.py* scripts.
 
 More efficiently, the following script:
